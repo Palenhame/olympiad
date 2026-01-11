@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>PvP</title>
+
+    <style>
+        .tasks {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .task-btn {
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+        }
+
+        .my-correct { background: #4caf50; }
+        .my-wrong   { background: #f44336; }
+
+        .enemy-correct { outline: 3px solid #4caf50; }
+        .enemy-wrong   { outline: 3px solid #f44336; }
+    </style>
+</head>
+<body>
+
+<h1>PvP режим</h1>
+
+<div class="tasks" id="taskButtons"></div>
+
+<hr>
+
+<div>
+    <strong>Задание:</strong>
+    <div id="task">Ожидание...</div>
+</div>
+
+<hr>
+
+<input type="text" id="answer" placeholder="Введите ответ">
+<button id="send">Отправить</button>
+
+<hr>
+
+<div>
+    <strong>Статус:</strong>
+    <div id="status">Подключение...</div>
+</div>
+
+<script>
+    const roomId = "{{ room_id }}";
+    const socket = new WebSocket(
+        'ws://' + window.location.host + '/ws/pvp/' + roomId + '/'
+    );
+
+    let tasks = [];
+    let currentIndex = 0;
+
+    let myResults = {};
+    let enemyResults = {};
+
+    const taskEl = document.getElementById("task");
+    const statusEl = document.getElementById("status");
+    const buttonsEl = document.getElementById("taskButtons");
+
+    function renderButtons() {
+        buttonsEl.innerHTML = "";
+
+        tasks.forEach((_, i) => {
+            const btn = document.createElement("button");
+            btn.className = "task-btn";
+            btn.innerText = i + 1;
+
+            if (myResults[i] === true) btn.classList.add("my-correct");
+            if (myResults[i] === false) btn.classList.add("my-wrong");
+
+            if (enemyResults[i] === true) btn.classList.add("enemy-correct");
+            if (enemyResults[i] === false) btn.classList.add("enemy-wrong");
+
+            btn.onclick = () => {
+                currentIndex = i;
+                renderTask();
+            };
+
+            buttonsEl.appendChild(btn);
+        });
+    }
+
+    function renderTask() {
+        taskEl.innerText = tasks[currentIndex];
+        renderButtons();
+
+        socket.send(JSON.stringify({
+            type: "current_task",
+            task_index: currentIndex
+        }));
+    }
+
+    socket.onopen = () => {
+        statusEl.innerText = "Подключено";
+        socket.send(JSON.stringify({ type: "get_tasks" }));
+    };
+
+    socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        if (data.type === "tasks") {
+            tasks = data.tasks;
+            renderTask();
+        }
+
+        if (data.type === "result") {
+            if (typeof data.correct === "boolean") {
+                myResults[data.task_index] = data.correct;
+                statusEl.innerText = data.correct ? "Правильно" : "Неправильно";
+            } else {
+                myResults[data.task_index] = null; // не решена
+                statusEl.innerText = "Не решена";
+            }
+
+            renderButtons();
+        }
+
+        if (data.type === "enemy_result") {
+            enemyResults[data.task_index] = data.correct;
+            renderButtons();
+        }
+    };
+
+    document.getElementById("send").onclick = () => {
+        socket.send(JSON.stringify({
+            type: "answer",
+            task_index: currentIndex,
+            answer: document.getElementById("answer").value
+        }));
+
+        document.getElementById("answer").value = "";
+    };
+</script>
+
+</body>
+</html>
