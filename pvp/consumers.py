@@ -2,32 +2,30 @@ import json
 from random import randint, choice
 
 from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.db import database_sync_to_async
+
+from pvp.models import Round
+from tasks.models import Task
 
 ROOM_PLAYERS = {}
 
 
 class PvpConsumer(AsyncWebsocketConsumer):
     @staticmethod
+    @database_sync_to_async
     def task_list():
-        a = []
-        for i in range(10):
-            task = f'{randint(1, 100)} {choice(('+', '-', '*', '/'))} {randint(1, 100)}'
-            answer = eval(task)
-            a.append((task, answer))
-        return a
+        tasks = Task.objects.all()
+        return tasks
 
     tasks = task_list()
 
     async def connect(self):
         self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
-        self.session_key = self.scope["session"].session_key
-
-        if self.room_id not in ROOM_PLAYERS:
-            ROOM_PLAYERS[self.room_id] = []
-
-        ROOM_PLAYERS[self.room_id].append(self.channel_name)
+        self.user = self.scope["user"]
+        self.user_id = self.user.id if self.user.is_authenticated else None
 
         await self.accept()
+        print(self.user_id)
 
         await self.send(
             text_data=json.dumps(
@@ -42,7 +40,7 @@ class PvpConsumer(AsyncWebsocketConsumer):
         players = ROOM_PLAYERS.get(self.room_id, [])
 
         ROOM_PLAYERS[self.room_id] = [
-            c for c in players if c != self.channel_namez
+            c for c in players if c != self.channel_name
         ]
 
     async def receive(self, text_data: json):
@@ -91,3 +89,18 @@ class PvpConsumer(AsyncWebsocketConsumer):
                 'correct': event['correct'],
             })
         )
+
+    def return_user_id(self):
+        pass
+
+    @database_sync_to_async
+    def add_user_to_room(self, user_id):
+        round = Round.objects.create()
+        pass
+
+
+class DatabaseConsumer(AsyncWebsocketConsumer):
+    round = Round.objects.create()
+
+    def connect(self):
+        self.accept()

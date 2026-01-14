@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models
 
 from tasks.models import Task
+from users.models import User
 
 
 class RoundStatus(models.TextChoices):
@@ -15,6 +16,16 @@ class Round(models.Model):
         max_length=20,
         choices=RoundStatus.choices,
         default=RoundStatus.WAITING,
+    )
+    players = models.ManyToManyField(
+        User,
+        related_name='players',
+        through='RoundPlayer'
+    )
+    tasks = models.ManyToManyField(
+        Task,
+        related_name='tasks',
+        through='RoundTask',
     )
     winner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -46,6 +57,7 @@ class RoundTask(models.Model):
     )
 
     order = models.PositiveSmallIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ('round', 'order')
@@ -53,3 +65,15 @@ class RoundTask(models.Model):
 
     def __str__(self):
         return f'Round {self.round_id} – Task {self.order}'
+
+
+class RoundPlayer(models.Model):
+    round = models.ForeignKey(
+        Round,
+        on_delete=models.CASCADE
+    )
+    player = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
