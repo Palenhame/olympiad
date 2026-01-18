@@ -20,5 +20,6 @@ from django.urls import path, include
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path('', include('pvp.urls'))
+    path('', include('search_enemy.urls')),
+    path('pvp/', include('pvp.urls')),
 ]

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Поиск противника</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            text-align: center;
+            padding: 20px 30px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 300px;
+        }
+
+        #status {
+            margin: 20px 0;
+            font-size: 18px;
+            color: #666;
+            min-height: 24px;
+        }
+
+        #searchButton {
+            padding: 12px 24px;
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #searchButton:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Поиск противника</h1>
+    <div id="status">Подключение к серверу...</div>
+    <button id="searchButton" disabled>Поиск противника</button>
+</div>
+
+<script>
+    const WS_URL = "ws://127.0.0.1:8000/ws/pvp/";
+
+    let socket = null;
+    let isSearching = false;
+
+    const statusEl = document.getElementById("status");
+    const searchBtn = document.getElementById("searchButton");
+
+    function connectWebSocket() {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            return;
+        }
+
+        socket = new WebSocket(WS_URL);
+
+        socket.onopen = function () {
+            statusEl.textContent = "Готов к поиску противника";
+            searchBtn.disabled = false;
+        };
+
+        socket.onmessage = function (event) {
+            const roomId = parseInt(event.data);
+
+            if (!isNaN(matchId)) {
+                statusEl.textContent = "Противник найден! Матч #" + matchId;
+                setTimeout(function () {
+                    window.location.href = "/pvp/" + roomId + "/";
+                }, 1000);
+            } else {
+                statusEl.textContent = event.data;
+            }
+        };
+
+        socket.onerror = function () {
+            statusEl.textContent = "Ошибка соединения";
+            resetState();
+        };
+
+        socket.onclose = function () {
+            statusEl.textContent = "Соединение закрыто";
+            resetState();
+        };
+    }
+
+    function resetState() {
+        isSearching = false;
+        searchBtn.disabled = true;
+    }
+
+    searchBtn.addEventListener("click", function () {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            statusEl.textContent = "Нет соединения с сервером";
+            return;
+        }
+
+        isSearching = true;
+        searchBtn.disabled = true;
+        statusEl.textContent = "Ищем противника...";
+        socket.send("true");
+    });
+
+    window.onload = connectWebSocket;
+
+    setInterval(function () {
+        if (!socket || socket.readyState === WebSocket.CLOSED) {
+            if (!isSearching) {
+                connectWebSocket();
+            }
+        }
+    }, 5000);
+</script>
+</body>
+</html>

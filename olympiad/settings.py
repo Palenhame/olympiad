@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'users.apps.UsersConfig',
     'tasks.apps.TasksConfig',
     'user_statistics.apps.UserStatisticsConfig',
+    'search_enemy.apps.SearchEnemyConfig',
 ]
 
 MIDDLEWARE = [
