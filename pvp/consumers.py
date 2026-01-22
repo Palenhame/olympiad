@@ -47,7 +47,7 @@ class PvpConsumer(AsyncWebsocketConsumer):
         is_correct = None
         # TODO
         if type == 'answer':
-            task = None
+            task = await self.get_task(self.round, task_index + 1)
             is_correct = True if answer == task.correct_answer else False
 
         await self.send(
@@ -60,15 +60,14 @@ class PvpConsumer(AsyncWebsocketConsumer):
             )
         )
         # TODO
-        if enemy_channel_layer:
-            await self.channel_layer.send(
-                enemy_channel_layer,
-                {
-                    'type': 'enemy_result',
-                    'task_index': task_index,
-                    'correct': is_correct
-                }
-            )
+        await self.channel_layer.group_send(
+            f'user_{self.enemy.id}',
+            {
+                'type': 'enemy_result',
+                'task_index': task_index,
+                'correct': is_correct
+            }
+        )
 
     async def enemy_result(self, event):
         await self.send(
@@ -79,16 +78,14 @@ class PvpConsumer(AsyncWebsocketConsumer):
             })
         )
 
-    def return_user_id(self):
-        pass
-
     @database_sync_to_async
     def return_round(self, round_id):
         return Round.objects.get(pk=round_id)
 
     @database_sync_to_async
     def return_enemy(self, round, user_id):
-        return round.user.exclude(pk=user_id)
+        return round.players.exclude(pk=user_id)[0]
 
-    def get_tasks(self, round):
-        return RoundTask.objects.get(round=round).task
+    @database_sync_to_async
+    def get_task(self, round, order):
+        return RoundTask.objects.get(round=round, order=order).task
