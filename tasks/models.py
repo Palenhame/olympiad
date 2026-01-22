@@ -33,7 +33,6 @@ class Task(models.Model):
     solution = models.TextField()
     correct_answer = models.TextField()
     difficulty = models.PositiveSmallIntegerField(default=1)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

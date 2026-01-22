@@ -3,44 +3,39 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 
-from pvp.models import Round
+from pvp.models import Round, RoundTask
 from tasks.models import Task
 
 ROOM_PLAYERS = {}
 
 
 class PvpConsumer(AsyncWebsocketConsumer):
-    @staticmethod
-    @database_sync_to_async
-    def task_list():
-        tasks = Task.objects.all()
-        return tasks
-
-    tasks = task_list()
+    def __init__(self):
+        super().__init__()
+        self.round_id = None
+        self.user = None
+        self.enemy = None
+        self.round = None
 
     async def connect(self):
-        self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
+        self.round_id = self.scope["url_route"]["kwargs"]["room_id"]
+        self.round = await self.return_round(self.round_id)
         self.user = self.scope["user"]
-        self.user_id = self.user.id if self.user.is_authenticated else None
+        self.enemy = await self.return_enemy(self.round, self.user.id)
 
         await self.accept()
-        print(self.user_id)
 
-        await self.send(
-            text_data=json.dumps(
-                {
-                    'type': 'tasks',
-                    'tasks': [i[0] for i in self.tasks]
-                }
+        for user in (self.user, self.enemy):
+            await self.channel_layer.group_add(
+                f'user_{user.id}',
+                self.channel_name
             )
-        )
 
     async def disconnect(self, code):
-        players = ROOM_PLAYERS.get(self.room_id, [])
-
-        ROOM_PLAYERS[self.room_id] = [
-            c for c in players if c != self.channel_name
-        ]
+        await self.channel_layer.group_discard(
+            f'user_{self.user.id}',
+            self.channel_name
+        )
 
     async def receive(self, text_data: json):
         data = json.loads(text_data)
@@ -50,9 +45,10 @@ class PvpConsumer(AsyncWebsocketConsumer):
         answer = data.get('answer')
 
         is_correct = None
-
+        # TODO
         if type == 'answer':
-            is_correct = (answer == str(self.tasks[task_index][1]))
+            task = None
+            is_correct = True if answer == task.correct_answer else False
 
         await self.send(
             text_data=json.dumps(
@@ -63,8 +59,7 @@ class PvpConsumer(AsyncWebsocketConsumer):
                 }
             )
         )
-        enemy_channel_layer = self.get_opponent_channel()
-
+        # TODO
         if enemy_channel_layer:
             await self.channel_layer.send(
                 enemy_channel_layer,
@@ -74,11 +69,6 @@ class PvpConsumer(AsyncWebsocketConsumer):
                     'correct': is_correct
                 }
             )
-
-    def get_opponent_channel(self):
-        for channel in ROOM_PLAYERS[self.room_id]:
-            if channel != self.channel_name:
-                return channel
 
     async def enemy_result(self, event):
         await self.send(
@@ -93,13 +83,12 @@ class PvpConsumer(AsyncWebsocketConsumer):
         pass
 
     @database_sync_to_async
-    def add_user_to_room(self, user_id):
-        round = Round.objects.create()
-        pass
+    def return_round(self, round_id):
+        return Round.objects.get(pk=round_id)
 
+    @database_sync_to_async
+    def return_enemy(self, round, user_id):
+        return round.user.exclude(pk=user_id)
 
-class DatabaseConsumer(AsyncWebsocketConsumer):
-    round = Round.objects.create()
-
-    def connect(self):
-        self.accept()
+    def get_tasks(self, round):
+        return RoundTask.objects.get(round=round).task

@@ -32,6 +32,7 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     'daphne',
+    #
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -44,6 +45,8 @@ INSTALLED_APPS = [
     'tasks.apps.TasksConfig',
     'user_statistics.apps.UserStatisticsConfig',
     'search_enemy.apps.SearchEnemyConfig',
+    #
+    'debug_toolbar',
 ]
 
 MIDDLEWARE = [
@@ -54,6 +57,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    #
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
 
 ROOT_URLCONF = "olympiad.urls"
@@ -75,6 +80,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "olympiad.wsgi.application"
 ASGI_APPLICATION = "olympiad.asgi.application"
+
+
+INTERNAL_IPS = [
+    "127.0.0.1",
+]
 
 
 # Database

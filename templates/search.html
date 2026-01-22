@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Поиск противника</title>
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -21,7 +22,7 @@
             background: #fff;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            width: 300px;
+            width: 320px;
         }
 
         #status {
@@ -51,7 +52,7 @@
 
 <div class="container">
     <h1>Поиск противника</h1>
-    <div id="status">Подключение к серверу...</div>
+    <div id="status">Подключение...</div>
     <button id="searchButton" disabled>Поиск противника</button>
 </div>
 
@@ -65,36 +66,42 @@
     const searchBtn = document.getElementById("searchButton");
 
     function connectWebSocket() {
-        if (socket && socket.readyState === WebSocket.OPEN) {
-            return;
-        }
-
         socket = new WebSocket(WS_URL);
 
-        socket.onopen = function () {
+        socket.onopen = () => {
             statusEl.textContent = "Готов к поиску противника";
             searchBtn.disabled = false;
         };
 
-        socket.onmessage = function (event) {
-            const roomId = parseInt(event.data);
+        socket.onmessage = (event) => {
+            let data;
 
-            if (!isNaN(matchId)) {
-                statusEl.textContent = "Противник найден! Матч #" + matchId;
-                setTimeout(function () {
-                    window.location.href = "/pvp/" + roomId + "/";
+            try {
+                data = JSON.parse(event.data);
+            } catch (e) {
+                console.error("Invalid JSON:", event.data);
+                return;
+            }
+
+            if (data.type === "room_id") {
+                statusEl.textContent = `Противник найден! Матч #${data.room_id}`;
+
+                setTimeout(() => {
+                    window.location.href = `/pvp/${data.room_id}/`;
                 }, 1000);
-            } else {
-                statusEl.textContent = event.data;
+            }
+
+            if (data.type === "status") {
+                statusEl.textContent = data.message;
             }
         };
 
-        socket.onerror = function () {
+        socket.onerror = () => {
             statusEl.textContent = "Ошибка соединения";
             resetState();
         };
 
-        socket.onclose = function () {
+        socket.onclose = () => {
             statusEl.textContent = "Соединение закрыто";
             resetState();
         };
@@ -105,7 +112,7 @@
         searchBtn.disabled = true;
     }
 
-    searchBtn.addEventListener("click", function () {
+    searchBtn.addEventListener("click", () => {
         if (!socket || socket.readyState !== WebSocket.OPEN) {
             statusEl.textContent = "Нет соединения с сервером";
             return;
@@ -114,12 +121,16 @@
         isSearching = true;
         searchBtn.disabled = true;
         statusEl.textContent = "Ищем противника...";
-        socket.send("true");
+
+        socket.send(JSON.stringify({
+            type: "is_search",
+            is_search: true
+        }));
     });
 
     window.onload = connectWebSocket;
 
-    setInterval(function () {
+    setInterval(() => {
         if (!socket || socket.readyState === WebSocket.CLOSED) {
             if (!isSearching) {
                 connectWebSocket();
@@ -127,5 +138,6 @@
         }
     }, 5000);
 </script>
+
 </body>
 </html>

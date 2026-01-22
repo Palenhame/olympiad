@@ -49,21 +49,38 @@
     <div id="status">Подключение...</div>
 </div>
 
+<!-- 🔥 ВАЖНО: данные из Django -->
+{{ tasks|json_script:"tasks-data" }}
+
 <script>
+    // данные из шаблона
     const roomId = "{{ room_id }}";
+    const tasks = JSON.parse(
+        document.getElementById("tasks-data").textContent
+    );
+
+    console.log("tasks:", tasks);
+    console.log("isArray:", Array.isArray(tasks));
+</script>
+
+<script>
     const socket = new WebSocket(
         'ws://' + window.location.host + '/ws/pvp/' + roomId + '/'
     );
 
-    let tasks = [];
     let currentIndex = 0;
-
     let myResults = {};
     let enemyResults = {};
 
     const taskEl = document.getElementById("task");
     const statusEl = document.getElementById("status");
     const buttonsEl = document.getElementById("taskButtons");
+
+    // защита от пустых задач
+    if (!Array.isArray(tasks) || tasks.length === 0) {
+        statusEl.innerText = "Задачи не найдены";
+        throw new Error("Tasks not found or invalid format");
+    }
 
     function renderButtons() {
         buttonsEl.innerHTML = "";
@@ -100,25 +117,19 @@
 
     socket.onopen = () => {
         statusEl.innerText = "Подключено";
-        socket.send(JSON.stringify({ type: "get_tasks" }));
+        renderTask();
     };
 
     socket.onmessage = (event) => {
         const data = JSON.parse(event.data);
 
-        if (data.type === "tasks") {
-            tasks = data.tasks;
-            renderTask();
-        }
-
         if (data.type === "result") {
-            if (typeof data.correct === "boolean") {
-                myResults[data.task_index] = data.correct;
-                statusEl.innerText = data.correct ? "Правильно" : "Неправильно";
-            } else {
-                myResults[data.task_index] = null; // не решена
-                statusEl.innerText = "Не решена";
-            }
+            myResults[data.task_index] = data.correct ?? null;
+
+            statusEl.innerText =
+                data.correct === true  ? "Правильно" :
+                data.correct === false ? "Неправильно" :
+                "Не решена";
 
             renderButtons();
         }
@@ -126,6 +137,11 @@
         if (data.type === "enemy_result") {
             enemyResults[data.task_index] = data.correct;
             renderButtons();
+        }
+
+        if (data.type === "current_task") {
+            currentIndex = data.task_index;
+            renderTask();
         }
     };
 
