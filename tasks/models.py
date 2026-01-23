@@ -37,3 +37,8 @@ class Task(models.Model):
 
     def __str__(self):
         return f'Task №{self.id}'
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['difficulty']),
+        ]

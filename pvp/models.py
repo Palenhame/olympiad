@@ -19,12 +19,12 @@ class Round(models.Model):
     )
     players = models.ManyToManyField(
         User,
-        related_name='players',
+        related_name='rounds',
         through='RoundPlayer'
     )
     tasks = models.ManyToManyField(
         Task,
-        related_name='tasks',
+        related_name='rounds',
         through='RoundTask',
     )
     winner = models.ForeignKey(
@@ -62,6 +62,10 @@ class RoundTask(models.Model):
     class Meta:
         unique_together = ('round', 'order')
         ordering = ['order']
+        indexes = [
+            models.Index(fields=['round']),
+            models.Index(fields=['task']),
+        ]
 
     def __str__(self):
         return f'Round {self.round_id} – Task {self.order}'
@@ -77,3 +81,10 @@ class RoundPlayer(models.Model):
         on_delete=models.CASCADE
     )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['round']),
+            models.Index(fields=['player']),
+        ]
+
