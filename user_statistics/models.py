@@ -16,8 +16,8 @@ class Statistics(models.Model):
     )
 
     number_of_attempts = models.PositiveIntegerField(default=1)
-    user_answer = models.TextField()
-    is_correct = models.BooleanField()
+    user_answer = models.TextField(null=True)
+    is_correct = models.BooleanField(null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 

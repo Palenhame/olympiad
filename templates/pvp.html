@@ -5,20 +5,59 @@
     <title>PvP</title>
 
     <style>
+        body {
+            font-family: sans-serif;
+        }
+
+        .progress-wrapper {
+            margin-bottom: 15px;
+        }
+
+        .progress-label {
+            font-size: 14px;
+            margin-bottom: 3px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 16px;
+            background: #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .my-fill {
+            background: #4caf50;
+        }
+
+        .enemy-fill {
+            background: #f44336;
+        }
+
         .tasks {
             display: flex;
-            gap: 5px;
-            margin-bottom: 10px;
+            gap: 6px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
         }
 
         .task-btn {
             width: 40px;
             height: 40px;
             cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background: #eee;
         }
 
-        .my-correct { background: #4caf50; }
-        .my-wrong   { background: #f44336; }
+        .my-correct { background: #4caf50; color: white; }
+        .my-wrong   { background: #f44336; color: white; }
 
         .enemy-correct { outline: 3px solid #4caf50; }
         .enemy-wrong   { outline: 3px solid #f44336; }
@@ -26,7 +65,24 @@
 </head>
 <body>
 
-<h1>PvP режим</h1>
+<h2>PvP режим</h2>
+
+<!-- ПРОГРЕСС -->
+<div class="progress-wrapper">
+    <div class="progress-label">Ты</div>
+    <div class="progress-bar">
+        <div class="progress-fill my-fill" id="myProgress"></div>
+    </div>
+</div>
+
+<div class="progress-wrapper">
+    <div class="progress-label">Противник</div>
+    <div class="progress-bar">
+        <div class="progress-fill enemy-fill" id="enemyProgress"></div>
+    </div>
+</div>
+
+<hr>
 
 <div class="tasks" id="taskButtons"></div>
 
@@ -49,37 +105,57 @@
     <div id="status">Подключение...</div>
 </div>
 
-<!-- 🔥 ВАЖНО: данные из Django -->
+<!-- данные из Django -->
 {{ tasks|json_script:"tasks-data" }}
 
 <script>
-    // данные из шаблона
     const roomId = "{{ room_id }}";
-    const tasks = JSON.parse(
+
+    /**
+     * tasksData = [
+     *   ["2+2", null],
+     *   ["3*3", true],
+     *   ["5-1", false]
+     * ]
+     */
+    const tasksData = JSON.parse(
         document.getElementById("tasks-data").textContent
     );
 
-    console.log("tasks:", tasks);
-    console.log("isArray:", Array.isArray(tasks));
-</script>
-
-<script>
-    const socket = new WebSocket(
-        'ws://' + window.location.host + '/ws/pvp/' + roomId + '/'
-    );
+    const tasks = tasksData.map(t => t[0]);
 
     let currentIndex = 0;
-    let myResults = {};
-    let enemyResults = {};
+
+    // 🔥 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ
+    let myResults = Array(tasks.length).fill(null);
+    let enemyResults = Array(tasks.length).fill(null);
+
+    // инициализация статусов пользователя
+    tasksData.forEach(([, status], i) => {
+        if (status === true || status === false) {
+            myResults[i] = status;
+        }
+    });
+
+    const socket = new WebSocket(
+        `ws://${window.location.host}/ws/pvp/${roomId}/`
+    );
 
     const taskEl = document.getElementById("task");
     const statusEl = document.getElementById("status");
     const buttonsEl = document.getElementById("taskButtons");
 
-    // защита от пустых задач
-    if (!Array.isArray(tasks) || tasks.length === 0) {
-        statusEl.innerText = "Задачи не найдены";
-        throw new Error("Tasks not found or invalid format");
+    const myProgressEl = document.getElementById("myProgress");
+    const enemyProgressEl = document.getElementById("enemyProgress");
+
+    function calcProgress(results) {
+        const solved = results.filter(v => v === true || v === false).length;
+        return (solved / tasks.length) * 100;
+    }
+
+    function updateProgress() {
+        myProgressEl.style.width = calcProgress(myResults) + "%";
+        enemyProgressEl.style.width = calcProgress(enemyResults) + "%";
     }
 
     function renderButtons() {
@@ -103,16 +179,13 @@
 
             buttonsEl.appendChild(btn);
         });
+
+        updateProgress();
     }
 
     function renderTask() {
         taskEl.innerText = tasks[currentIndex];
         renderButtons();
-
-        socket.send(JSON.stringify({
-            type: "current_task",
-            task_index: currentIndex
-        }));
     }
 
     socket.onopen = () => {
@@ -124,24 +197,14 @@
         const data = JSON.parse(event.data);
 
         if (data.type === "result") {
-            myResults[data.task_index] = data.correct ?? null;
-
-            statusEl.innerText =
-                data.correct === true  ? "Правильно" :
-                data.correct === false ? "Неправильно" :
-                "Не решена";
-
+            myResults[data.task_index] = data.correct;
+            statusEl.innerText = data.correct ? "Правильно" : "Неправильно";
             renderButtons();
         }
 
         if (data.type === "enemy_result") {
             enemyResults[data.task_index] = data.correct;
             renderButtons();
-        }
-
-        if (data.type === "current_task") {
-            currentIndex = data.task_index;
-            renderTask();
         }
     };
 

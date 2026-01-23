@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     'search_enemy.apps.SearchEnemyConfig',
     #
     'debug_toolbar',
+    'shell_plus',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [

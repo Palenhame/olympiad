@@ -4,7 +4,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 
 from pvp.models import Round, RoundTask
-from tasks.models import Task
+from user_statistics.services import update_or_create_statistics
 
 ROOM_PLAYERS = {}
 
@@ -19,9 +19,9 @@ class PvpConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         self.round_id = self.scope["url_route"]["kwargs"]["room_id"]
-        self.round = await self.return_round(self.round_id)
+        self.round = await self.return_round()
         self.user = self.scope["user"]
-        self.enemy = await self.return_enemy(self.round, self.user.id)
+        self.enemy = await self.return_enemy()
 
         await self.accept()
 
@@ -47,27 +47,29 @@ class PvpConsumer(AsyncWebsocketConsumer):
         is_correct = None
         # TODO
         if type == 'answer':
-            task = await self.get_task(self.round, task_index + 1)
+            task = await self.get_task(task_index + 1)
             is_correct = True if answer == task.correct_answer else False
 
-        await self.send(
-            text_data=json.dumps(
+            await self.change_task_status(task, is_correct, answer)
+
+            await self.send(
+                text_data=json.dumps(
+                    {
+                        'type': 'result',
+                        'task_index': task_index,
+                        'correct': is_correct
+                    }
+                )
+            )
+            # TODO
+            await self.channel_layer.group_send(
+                f'user_{self.enemy.id}',
                 {
-                    'type': 'result',
+                    'type': 'enemy_result',
                     'task_index': task_index,
                     'correct': is_correct
                 }
             )
-        )
-        # TODO
-        await self.channel_layer.group_send(
-            f'user_{self.enemy.id}',
-            {
-                'type': 'enemy_result',
-                'task_index': task_index,
-                'correct': is_correct
-            }
-        )
 
     async def enemy_result(self, event):
         await self.send(
@@ -79,13 +81,32 @@ class PvpConsumer(AsyncWebsocketConsumer):
         )
 
     @database_sync_to_async
-    def return_round(self, round_id):
-        return Round.objects.get(pk=round_id)
+    def return_round(self):
+        return Round.objects.get(pk=self.round_id)
 
     @database_sync_to_async
-    def return_enemy(self, round, user_id):
-        return round.players.exclude(pk=user_id)[0]
+    def return_enemy(self):
+        return self.round.players.exclude(pk=self.user.id)[0]
 
     @database_sync_to_async
-    def get_task(self, round, order):
-        return RoundTask.objects.get(round=round, order=order).task
+    def get_task(self, order):
+        return RoundTask.objects.get(round=self.round, order=order).task
+
+    @database_sync_to_async
+    def change_task_status(self,
+                           task_id: int,
+                           is_correct: bool,
+                           user_answer: str
+                           ):
+        round_task = RoundTask.objects.get(
+            round=self.round,
+            task=task_id
+        )
+        print(is_correct)
+        print(user_answer)
+        update_or_create_statistics(
+            round_task,
+            self.user,
+            is_correct,
+            user_answer,
+        )
