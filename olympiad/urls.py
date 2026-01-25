@@ -23,5 +23,5 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path('', include('search_enemy.urls')),
     path('pvp/', include('pvp.urls')),
-    path("accounts/", include("django.contrib.auth.urls")),
+    path("users/", include('authentication.urls')),
 ] + debug_toolbar_urls()

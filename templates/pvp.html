@@ -197,13 +197,13 @@
         const data = JSON.parse(event.data);
 
         if (data.type === "result") {
-            myResults[data.task_index] = data.correct;
+            myResults[data.task_index] = data.is_correct;
             statusEl.innerText = data.correct ? "Правильно" : "Неправильно";
             renderButtons();
         }
 
         if (data.type === "enemy_result") {
-            enemyResults[data.task_index] = data.correct;
+            enemyResults[data.task_index] = data.is_correct;
             renderButtons();
         }
     };

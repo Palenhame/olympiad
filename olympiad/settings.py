@@ -45,10 +45,12 @@ INSTALLED_APPS = [
     'tasks.apps.TasksConfig',
     'user_statistics.apps.UserStatisticsConfig',
     'search_enemy.apps.SearchEnemyConfig',
+    'authentication.apps.AuthenticationConfig',
     #
     'debug_toolbar',
     'shell_plus',
     'django_extensions',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -103,6 +105,12 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels.layers.InMemoryChannelLayer"
     }
+}
+
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly',
+    ]
 }
 
 
