@@ -48,8 +48,6 @@ INSTALLED_APPS = [
     'authentication.apps.AuthenticationConfig',
     #
     'debug_toolbar',
-    'shell_plus',
-    'django_extensions',
     'rest_framework',
 ]
 
@@ -101,10 +99,16 @@ DATABASES = {
     }
 }
 
+REDIS_HOST = 'localhost'
+REDIS_PORT = 6379
+
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer"
-    }
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)], # Replace with your Redis server details
+        },
+    },
 }
 
 REST_FRAMEWORK = {
