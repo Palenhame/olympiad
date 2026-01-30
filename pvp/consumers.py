@@ -8,6 +8,7 @@ from pvp.models import Round, RoundTask
 from user_statistics.services import update_or_create_statistics
 from pvp.serializer import AnswerMessageSerializer, MessageType, ResultMessageSerializer
 from pvp.exceptions import EnemyNotFound, RoundNotFound, RoundTaskNotFound
+from pvp.api.shemas import AnswerMessage, ResultMessage
 
 
 class PvpConsumer(AsyncWebsocketConsumer):
@@ -40,6 +41,11 @@ class PvpConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
 
         serializer = AnswerMessageSerializer(data=data)
+        try:
+            answer_message = AnswerMessage(**data)
+        except TypeError as error:
+            error =  error.errors()
+            self.ws_return_error_message(error['msg'], error)
 
         if not serializer.is_valid():
             await self.ws_return_error_message(serializer.errors)
@@ -115,11 +121,12 @@ class PvpConsumer(AsyncWebsocketConsumer):
     def is_player_in_round(self):
         return self.round.players.filter(pk=self.user.id).exists()
 
-    async def ws_return_error_message(self, error_message):
+    async def ws_return_error_message(self, error_message, json: json = None):
         await self.send(
             text_data=json.dumps({
                 'type': 'error',
-                'errors': error_message
+                'errors': error_message,
+                'json': json
             })
         )
 
