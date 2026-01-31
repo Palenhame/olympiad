@@ -1,8 +1,25 @@
 from django.db.models import F
 
+from user_statistics.services.user_statistics_cache import StatisticsCache
 from user_statistics.models import Statistics
-from pvp.models import RoundTask
+from pvp.models import RoundTask, Round
 from users.models import User
+
+
+async def register_answer(
+        round: Round,
+        user: User,
+        round_task: RoundTask,
+        answer: str,
+        is_correct: bool,
+):
+    StatisticsCache.register_attempt(
+        round_id=round.id,
+        user_id=user.id,
+        round_task_id=round_task.id,
+        answer=answer,
+        is_correct=is_correct,
+    )
 
 
 def update_or_create_statistics(

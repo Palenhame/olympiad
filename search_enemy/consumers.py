@@ -8,10 +8,13 @@ from channels.db import database_sync_to_async
 from users.models import User
 from pvp.models import Round, RoundTask, RoundStatus, RoundPlayer
 from tasks.models import Task
+from search_enemy.services.search_enemy_cache import PlayerInSearchCache
+from search_enemy.services.search_enemy_cache import get_redis_connection
 
-PLAYERS_IN_SEARCH = set()
 
+players_in_search = PlayerInSearchCache(get_redis_connection())
 
+# TODO доделать перестройку на редис и избавиться от перегрузки ответсвенностью
 class SearchEnemyConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.user = self.scope['user']
@@ -35,7 +38,7 @@ class SearchEnemyConsumer(AsyncWebsocketConsumer):
             self.group_name,
             self.channel_name
         )
-        PLAYERS_IN_SEARCH.discard(self.user_id)
+        pass
 
     async def receive(self, text_data: json):
         data = json.loads(text_data)

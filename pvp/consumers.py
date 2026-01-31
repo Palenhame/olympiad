@@ -1,14 +1,14 @@
 import json
 
-from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
+from channels.generic.websocket import AsyncWebsocketConsumer
+from pydantic import ValidationError
 
-from tasks.models import Task
-from pvp.models import Round, RoundTask
-from user_statistics.services import update_or_create_statistics
-from pvp.serializer import AnswerMessageSerializer, MessageType, ResultMessageSerializer
+from pvp.api.shemas import AnswerMessage
 from pvp.exceptions import EnemyNotFound, RoundNotFound, RoundTaskNotFound
-from pvp.api.shemas import AnswerMessage, ResultMessage
+from pvp.models import Round, RoundTask
+from pvp.serializer import MessageType, ResultMessageSerializer
+from user_statistics.services.user_statistics_server import update_or_create_statistics, register_answer
 
 
 class PvpConsumer(AsyncWebsocketConsumer):
@@ -29,41 +29,31 @@ class PvpConsumer(AsyncWebsocketConsumer):
         await self.accept()
         await self.add_to_groups()
 
-
     async def disconnect(self, code):
-        await self.channel_layer.group_discard(
-            f'user_{self.user.id}',
-            self.channel_name
-        )
-
+        if self.user and self.user.is_authenticated:
+            await self.channel_layer.group_discard(
+                f'user_{self.user.id}',
+                self.channel_name
+            )
 
     async def receive(self, text_data):
         data = json.loads(text_data)
 
-        serializer = AnswerMessageSerializer(data=data)
         try:
             answer_message = AnswerMessage(**data)
-        except TypeError as error:
-            error =  error.errors()
-            self.ws_return_error_message(error['msg'], error)
-
-        if not serializer.is_valid():
-            await self.ws_return_error_message(serializer.errors)
+        except ValidationError as error:
+            await self.ws_return_error_message(error.errors())
             return
 
-        validated = serializer.validated_data
-        task_index = validated['task_index']
-        answer = validated['answer']
+        task_index = answer_message.task_index
+        answer = answer_message.answer
 
         try:
-            is_correct = await self.change_task_status(task_index, answer)
+            is_correct = await self.change_task_status(task_index + 1, answer)
         except RoundTaskNotFound:
             return
 
         await self.send_data_to_frontend(task_index, is_correct)
-
-
-
 
     async def ws_result(self, event):
         serializer = ResultMessageSerializer(
@@ -94,22 +84,12 @@ class PvpConsumer(AsyncWebsocketConsumer):
             raise EnemyNotFound
         return enemy
 
-
-    @database_sync_to_async
-    def get_task(self, order: int):
-        return RoundTask.objects.get(round=self.round, order=order).task
-
     @database_sync_to_async
     def change_task_status_in_db(self,
-                           task: Task,
-                           is_correct: bool,
-                           user_answer: str
-                           ):
-        round_task = RoundTask.objects.get(
-            round=self.round,
-            task=task
-        )
-
+                                 round_task: RoundTask,
+                                 is_correct: bool,
+                                 user_answer: str
+                                 ):
         update_or_create_statistics(
             round_task,
             self.user,
@@ -121,31 +101,30 @@ class PvpConsumer(AsyncWebsocketConsumer):
     def is_player_in_round(self):
         return self.round.players.filter(pk=self.user.id).exists()
 
-    async def ws_return_error_message(self, error_message, json: json = None):
+    @database_sync_to_async
+    def get_round_task(self, order: int) -> RoundTask:
+        return RoundTask.objects.select_related("task").get(
+            round=self.round,
+            order=order
+        )
+
+    async def ws_return_error_message(self, error_message):
         await self.send(
             text_data=json.dumps({
                 'type': 'error',
                 'errors': error_message,
-                'json': json
             })
         )
 
     async def change_task_status(self, task_index, answer) -> bool:
-        try:
-            task = await self.get_task(task_index + 1)
-        except RoundTask.DoesNotExist:
-            await self.ws_return_error_message('Round_task does not exist')
-            raise RoundTaskNotFound
 
-        is_correct = True if answer == task.correct_answer else False
 
-        await self.change_task_status_in_db(task, is_correct, answer)
+
 
         return is_correct
 
     async def send_data_to_frontend(self, task_index: int, is_correct: bool) -> None:
         for player_id in (self.user.id, self.enemy.id):
-
             message_type = MessageType.ANSWER if player_id == self.user.id else MessageType.ENEMY_RESULT
 
             await self.channel_layer.group_send(
@@ -187,4 +166,3 @@ class PvpConsumer(AsyncWebsocketConsumer):
                 f'user_{user.id}',
                 self.channel_name
             )
-
