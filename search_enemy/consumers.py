@@ -38,23 +38,33 @@ class SearchEnemyConsumer(AsyncWebsocketConsumer):
             self.group_name,
             self.channel_name
         )
-        pass
+
 
     async def receive(self, text_data: json):
         data = json.loads(text_data)
+
+        subject = data['subject']
 
         if data["type"] == "is_search" and data["is_search"]:
 
             if self.match_start:
                 return
 
-            if self.user_id in PLAYERS_IN_SEARCH:
+            if players_in_search.is_player_in_search(
+                subject=subject,
+                user_id=self.user_id,
+            ):
                 return
 
-            PLAYERS_IN_SEARCH.add(self.user_id)
-            print(PLAYERS_IN_SEARCH)
 
-            self.enemy = await self.get_user(self.user_id)
+            rating = await self.get_user_rating()
+            await players_in_search.add_player(subject, self.user_id, rating)
+
+
+            self.enemy = await players_in_search.search_player(
+                subject=subject,
+                rating=rating
+            )
 
             if not self.enemy:
                 print("Противники не найдены")
@@ -86,6 +96,11 @@ class SearchEnemyConsumer(AsyncWebsocketConsumer):
         for uid in PLAYERS_IN_SEARCH:
             if uid != user_id:
                 return uid
+
+
+    @database_sync_to_async
+    def get_user_rating(self):
+        return User.objects.get(pk=self.user_id).rating
 
 
     @database_sync_to_async

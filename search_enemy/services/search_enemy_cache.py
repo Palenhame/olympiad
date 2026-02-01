@@ -41,11 +41,14 @@ class CorrectAnswerCache:
 
 
 class PlayerInSearchCache:
+    TTL = 60 * 2
+
     def __init__(self, redis: Redis) -> None:
         self.redis = redis
 
     async def add_player(self, subject: str, user_id: int, rating: int) -> None:
-        await self.redis.zadd(subject, {f'{user_id}': rating})
+        await self.redis.zadd(subject, {str(user_id): rating})
+        await self.redis.expire(subject, self.TTL)
 
     async def search_player(self, subject: str, rating: int) -> int | None:
         delta = 50
@@ -54,7 +57,8 @@ class PlayerInSearchCache:
 
         user_id = await self.redis.eval(
             lua_script,
-            0,
+            1,
+            subject,
             rating - delta,
             rating + delta
         )
@@ -63,3 +67,6 @@ class PlayerInSearchCache:
 
     async def remove_player(self, subject: str, user_id: int) -> None:
         await self.redis.zrem(subject, str(user_id))
+
+    async def is_player_in_search(self, subject: str, user_id: int) -> bool:
+        return await self.redis.zscore(subject, str(user_id))
