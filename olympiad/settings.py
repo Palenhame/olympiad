@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'user_statistics.apps.UserStatisticsConfig',
     'search_enemy.apps.SearchEnemyConfig',
     'authentication.apps.AuthenticationConfig',
+    'core.apps.CoreConfig',
     #
     'debug_toolbar',
     'rest_framework',
@@ -112,7 +113,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)], # Replace with your Redis server details
+            "hosts": [("127.0.0.1", 6379)],
         },
     },
 }

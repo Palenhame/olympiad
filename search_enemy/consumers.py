@@ -6,21 +6,21 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 
 from users.models import User
-from pvp.models import Round, RoundTask, RoundStatus, RoundPlayer
-from tasks.models import Task
+from core.services.rounds_services import RoundService
+from core.services.matchmaking_services import MatchmakingService
 from search_enemy.services.search_enemy_cache import PlayerInSearchCache
 from search_enemy.services.search_enemy_cache import get_redis_connection
 
 
 players_in_search = PlayerInSearchCache(get_redis_connection())
+matchmaking_service = MatchmakingService(players_in_search)
 
 # TODO доделать перестройку на редис и избавиться от перегрузки ответсвенностью
 class SearchEnemyConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.user = self.scope['user']
         self.user_id = self.user.id
-        self.enemy = None
-        self.match_start = False
+
 
         if self.user.is_authenticated:
             self.group_name = f'user_{self.user_id}'
@@ -34,10 +34,11 @@ class SearchEnemyConsumer(AsyncWebsocketConsumer):
             await self.close()
 
     async def disconnect(self, code):
-        await self.channel_layer.group_discard(
-            self.group_name,
-            self.channel_name
-        )
+        if self.user.is_authenticated:
+            await self.channel_layer.group_discard(
+                self.group_name,
+                self.channel_name
+            )
 
 
     async def receive(self, text_data: json):
@@ -47,10 +48,7 @@ class SearchEnemyConsumer(AsyncWebsocketConsumer):
 
         if data["type"] == "is_search" and data["is_search"]:
 
-            if self.match_start:
-                return
-
-            if players_in_search.is_player_in_search(
+            if await players_in_search.is_player_in_search(
                 subject=subject,
                 user_id=self.user_id,
             ):
@@ -58,44 +56,23 @@ class SearchEnemyConsumer(AsyncWebsocketConsumer):
 
 
             rating = await self.get_user_rating()
-            await players_in_search.add_player(subject, self.user_id, rating)
 
 
-            self.enemy = await players_in_search.search_player(
+            self.enemy = await matchmaking_service.find_enemy(
                 subject=subject,
-                rating=rating
+                rating=rating,
+                user_id=self.user_id
             )
 
             if not self.enemy:
-                print("Противники не найдены")
-                await self.send(text_data=json.dumps({
-                    "type": "status",
-                    "message": "Противники не найдены"
-                }))
                 return
 
-            PLAYERS_IN_SEARCH.discard(self.user_id)
-            PLAYERS_IN_SEARCH.discard(self.enemy)
+            self.room_id = await self.start_round()
 
-            self.room_id = await self.start_round(
-                self.user_id,
-                self.enemy
-            )
+            await self.send_inf_message()
 
-            for user in (self.user_id, self.enemy):
-                await self.channel_layer.group_send(
-                    f'user_{user}',
-                    {
-                        'type': 'room_id_message',
-                        'message': self.room_id,
-                    }
-                )
 
-    @database_sync_to_async
-    def get_user(self, user_id):
-        for uid in PLAYERS_IN_SEARCH:
-            if uid != user_id:
-                return uid
+
 
 
     @database_sync_to_async
@@ -104,33 +81,8 @@ class SearchEnemyConsumer(AsyncWebsocketConsumer):
 
 
     @database_sync_to_async
-    def start_round(self, user_id, enemy_id):
-        tasks = Task.objects.all()[:3]
-        if not tasks:
-            raise ValueError("Нет задач для раунда")
-
-        user = User.objects.get(pk=user_id)
-        enemy = User.objects.get(pk=enemy_id)
-
-        game_round = Round.objects.create(
-            status=RoundStatus.IN_PROGRESS,
-            started_at=now(),
-            planed_finish=now() + timedelta(hours=2),
-        )
-
-        RoundPlayer.objects.bulk_create([
-            RoundPlayer(round=game_round, player=user),
-            RoundPlayer(round=game_round, player=enemy),
-        ])
-
-        for i, task in enumerate(tasks, start=1):
-            RoundTask.objects.create(
-                round=game_round,
-                task=task,
-                order=i
-            )
-
-        return game_round.id
+    def start_round(self):
+        return RoundService.start_round(self.user_id, self.enemy)
 
     async def room_id_message(self, event):
         room_id = event['message']
@@ -139,3 +91,13 @@ class SearchEnemyConsumer(AsyncWebsocketConsumer):
             'type': 'room_id',
             'room_id': room_id
         }))
+
+    async def send_inf_message(self):
+        for user in (self.user_id, self.enemy):
+            await self.channel_layer.group_send(
+                f'user_{user}',
+                {
+                    'type': 'room_id_message',
+                    'message': self.room_id,
+                }
+            )

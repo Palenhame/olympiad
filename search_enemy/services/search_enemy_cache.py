@@ -1,5 +1,8 @@
+import hashlib
+import os
 from functools import lru_cache
 
+from django.conf import settings
 from redis.asyncio import Redis
 
 from django.core.cache import cache
@@ -7,7 +10,7 @@ from django.core.cache import cache
 
 @lru_cache
 def get_redis_connection() -> Redis:
-    return Redis(host="redis", port=6379, db=0)
+    return Redis(host="127.0.0.1", port=6379, db=0)
 
 
 class CorrectAnswerCache:
@@ -41,26 +44,40 @@ class CorrectAnswerCache:
 
 
 class PlayerInSearchCache:
-    TTL = 60 * 2
-
     def __init__(self, redis: Redis) -> None:
         self.redis = redis
+        self._scripts = {}
+
+    async def _load_script(self, name: str) -> str:
+        if name not in self._scripts:
+            path = self.return_base_path_to_script() + name
+            with open(path, 'r') as f:
+                code = f.read()
+                self._scripts[name] = {
+                    'code': code,
+                    'sha': await self.redis.script_load(code)
+                }
+        return self._scripts[name]
 
     async def add_player(self, subject: str, user_id: int, rating: int) -> None:
         await self.redis.zadd(subject, {str(user_id): rating})
-        await self.redis.expire(subject, self.TTL)
 
-    async def search_player(self, subject: str, rating: int) -> int | None:
+    async def search_player(
+            self,
+            subject: str,
+            rating: int,
+            excluded_user: int
+    ) -> int | None:
         delta = 50
-        with open('lua_scripts/find_and_return_user.lua', 'r') as file:
-            lua_script = file.read()
+        lua_script = await self._load_script('find_and_return_user.lua')
 
-        user_id = await self.redis.eval(
-            lua_script,
+        user_id = await self.redis.evalsha(
+            lua_script['sha'],
             1,
             subject,
             rating - delta,
-            rating + delta
+            rating + delta,
+            excluded_user
         )
 
         return int(user_id) if user_id else None
@@ -69,4 +86,35 @@ class PlayerInSearchCache:
         await self.redis.zrem(subject, str(user_id))
 
     async def is_player_in_search(self, subject: str, user_id: int) -> bool:
-        return await self.redis.zscore(subject, str(user_id))
+        return (
+            await self.redis.zscore(subject, str(user_id))
+        ) is not None
+
+    async def remove_both_users(
+            self,
+            subject: str,
+            first_user_id: int,
+            second_user_id: int
+    ) -> None:
+        lua_script = await self._load_script('remove_two_users.lua')
+
+        await self.redis.evalsha(
+            lua_script['sha'],
+            1,
+            subject,
+            first_user_id,
+            second_user_id
+        )
+
+    def return_base_path_to_script(self) -> str:
+        return os.path.join(
+            settings.BASE_DIR,
+            'search_enemy/services',
+            'lua_scripts/'
+        )
+
+# async def main():
+#     player = PlayerInSearchCache(get_redis_connection())
+#     await player.add_player('math', 123, 122)
+#
+# asyncio.run(main())
