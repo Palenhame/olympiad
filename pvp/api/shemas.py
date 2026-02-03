@@ -21,10 +21,7 @@ class AnswerMessage(MessageBase):
 
 
 class ResultMessage(MessageBase):
-    type: Union[
-        Literal[MessageType.RESULT],
-        Literal[MessageType.ENEMY_RESULT]
-    ]
+    type: Union[Literal[MessageType.RESULT], Literal[MessageType.ENEMY_RESULT]]
     is_correct: bool
 
 

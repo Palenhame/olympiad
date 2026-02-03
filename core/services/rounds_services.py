@@ -1,36 +1,62 @@
 from datetime import timedelta
+
 from django.utils.timezone import now
+from django.db import transaction
 
 from tasks.models import Task
 from users.models import User
 from pvp.models import RoundPlayer, Round, RoundStatus, RoundTask
+from core.services.redis_services import statistics_cache
+
 
 class RoundService:
-    @staticmethod
-    def start_round(user_id: int, enemy_id: int) -> int:
-        tasks = Task.objects.all()[:3]
-        if not tasks:
-            raise ValueError("Нет задач для раунда")
+    def start_round(self, user_id: int, enemy_id: int) -> int:
+        with transaction.atomic():
+            tasks = list(Task.objects.order_by("id")[:3])
+            if len(tasks) < 3:
+                raise ValueError("Нет задач для раунда")
 
-        user = User.objects.get(pk=user_id)
-        enemy = User.objects.get(pk=enemy_id)
+            users = User.objects.in_bulk([user_id, enemy_id])
+            try:
+                user = users[user_id]
+                enemy = users[enemy_id]
+            except KeyError:
+                raise ValueError("Пользователь не найден")
 
-        game_round = Round.objects.create(
-            status=RoundStatus.IN_PROGRESS,
-            started_at=now(),
-            planed_finish=now() + timedelta(hours=2),
-        )
+            current_time = now()
 
-        RoundPlayer.objects.bulk_create([
-            RoundPlayer(round=game_round, player=user),
-            RoundPlayer(round=game_round, player=enemy),
-        ])
-
-        for i, task in enumerate(tasks, start=1):
-            RoundTask.objects.create(
-                round=game_round,
-                task=task,
-                order=i
+            game_round = Round.objects.create(
+                status=RoundStatus.IN_PROGRESS,
+                started_at=current_time,
+                planed_finish=current_time + timedelta(hours=2),
             )
 
-        return game_round.id
+            round_tasks = [
+                RoundTask(round=game_round, task=task, order=i)
+                for i, task in enumerate(tasks, start=1)
+            ]
+
+            RoundTask.objects.bulk_create(round_tasks)
+
+            for round_task in round_tasks:
+                for player in (user, enemy):
+                    self.create_statistics_tables(
+                        game_round.id,
+                        player.id,
+                        round_task.id,
+                    )
+
+            RoundTask.objects.bulk_create(
+                [
+                    RoundTask(round=game_round, task=task, order=i)
+                    for i, task in enumerate(tasks, start=1)
+                ]
+            )
+
+            return game_round.id
+
+    def create_statistics_tables(
+        self, round_id: int, user_id: int, round_task_id: int
+    ) -> None:
+        statistics_cache.create_statistics_tables(round_id, user_id, round_task_id)
+

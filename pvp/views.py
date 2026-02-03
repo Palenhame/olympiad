@@ -6,29 +6,16 @@ from django.db.models import Prefetch
 
 from pvp.models import Round, RoundTask
 from user_statistics.models import Statistics
+from core.services.redis_services import statistics_cache
 
 
 @login_required
 def pvp(request: HttpRequest, room_id: int):
-    round = get_object_or_404(
-        Round.objects
-        .only('id')
-        .prefetch_related(
-            Prefetch(
-                'players',
-                queryset=Round.players.rel.model.objects.only('id')
-            )
-        ),
-        pk=room_id
-    )
-
-    player_ids = {player.id for player in round.players.all()}
-    if request.user.id not in player_ids:
+    if not statistics_cache.is_exists(room_id, request.user.id):
         raise Http404
 
     round_tasks = (
-        RoundTask.objects
-        .filter(round_id=round.id)
+        RoundTask.objects.filter(round_id=round.id)
         .select_related('task')
         .only(
             'id',
@@ -39,10 +26,10 @@ def pvp(request: HttpRequest, room_id: int):
         .prefetch_related(
             Prefetch(
                 'statistics',
-                queryset=Statistics.objects
-                .filter(user_id=request.user.id)
-                .only('is_correct', 'round_task_id'),
-                to_attr='user_statistics'
+                queryset=Statistics.objects.filter(user_id=request.user.id).only(
+                    'is_correct', 'round_task_id'
+                ),
+                to_attr='user_statistics',
             )
         )
         .order_by('order')
@@ -54,9 +41,7 @@ def pvp(request: HttpRequest, room_id: int):
         if round_task.user_statistics:
             is_solve = round_task.user_statistics[0].is_correct
 
-        frontend_tasks.append(
-            (round_task.task.question, is_solve)
-        )
+        frontend_tasks.append((round_task.task.question, is_solve))
 
     return render(
         request,
@@ -64,5 +49,5 @@ def pvp(request: HttpRequest, room_id: int):
         {
             'room_id': room_id,
             'tasks': frontend_tasks,
-        }
+        },
     )

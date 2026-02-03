@@ -9,7 +9,6 @@ class MessageType(StrEnum):
     ENEMY_RESULT = 'enemy_result'
 
 
-
 class AnswerMessageSerializer(serializers.Serializer):
     type = serializers.ChoiceField(choices=[MessageType.ANSWER])
     task_index = serializers.IntegerField(min_value=0)
@@ -17,6 +16,8 @@ class AnswerMessageSerializer(serializers.Serializer):
 
 
 class ResultMessageSerializer(serializers.Serializer):
-    type = serializers.ChoiceField(choices=[MessageType.RESULT, MessageType.ENEMY_RESULT])
+    type = serializers.ChoiceField(
+        choices=[MessageType.RESULT, MessageType.ENEMY_RESULT]
+    )
     task_index = serializers.IntegerField(min_value=0)
     is_correct = serializers.BooleanField()

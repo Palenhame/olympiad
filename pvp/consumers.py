@@ -8,7 +8,10 @@ from pvp.api.shemas import AnswerMessage
 from pvp.exceptions import EnemyNotFound, RoundNotFound, RoundTaskNotFound
 from pvp.models import Round, RoundTask
 from pvp.serializer import MessageType, ResultMessageSerializer
-from user_statistics.services.user_statistics_server import update_or_create_statistics, register_answer
+from user_statistics.services.user_statistics_server import (
+    update_or_create_statistics,
+    register_answer,
+)
 
 
 class PvpConsumer(AsyncWebsocketConsumer):
@@ -32,8 +35,7 @@ class PvpConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, code):
         if self.user and self.user.is_authenticated:
             await self.channel_layer.group_discard(
-                f'user_{self.user.id}',
-                self.channel_name
+                f'user_{self.user.id}', self.channel_name
             )
 
     async def receive(self, text_data):
@@ -60,15 +62,13 @@ class PvpConsumer(AsyncWebsocketConsumer):
             data={
                 'type': event['type_of_message'],
                 'task_index': event['task_index'],
-                'is_correct': event['is_correct']
+                'is_correct': event['is_correct'],
             }
         )
 
         serializer.is_valid(raise_exception=True)
 
-        await self.send(
-            text_data=json.dumps(serializer.data)
-        )
+        await self.send(text_data=json.dumps(serializer.data))
 
     @database_sync_to_async
     def return_round(self):
@@ -85,11 +85,9 @@ class PvpConsumer(AsyncWebsocketConsumer):
         return enemy
 
     @database_sync_to_async
-    def change_task_status_in_db(self,
-                                 round_task: RoundTask,
-                                 is_correct: bool,
-                                 user_answer: str
-                                 ):
+    def change_task_status_in_db(
+        self, round_task: RoundTask, is_correct: bool, user_answer: str
+    ):
         update_or_create_statistics(
             round_task,
             self.user,
@@ -104,28 +102,29 @@ class PvpConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_round_task(self, order: int) -> RoundTask:
         return RoundTask.objects.select_related("task").get(
-            round=self.round,
-            order=order
+            round=self.round, order=order
         )
 
     async def ws_return_error_message(self, error_message):
         await self.send(
-            text_data=json.dumps({
-                'type': 'error',
-                'errors': error_message,
-            })
+            text_data=json.dumps(
+                {
+                    'type': 'error',
+                    'errors': error_message,
+                }
+            )
         )
 
     async def change_task_status(self, task_index, answer) -> bool:
-
-
-
-
-        return is_correct
+        pass
 
     async def send_data_to_frontend(self, task_index: int, is_correct: bool) -> None:
         for player_id in (self.user.id, self.enemy.id):
-            message_type = MessageType.ANSWER if player_id == self.user.id else MessageType.ENEMY_RESULT
+            message_type = (
+                MessageType.ANSWER
+                if player_id == self.user.id
+                else MessageType.ENEMY_RESULT
+            )
 
             await self.channel_layer.group_send(
                 f'user_{player_id}',
@@ -133,8 +132,8 @@ class PvpConsumer(AsyncWebsocketConsumer):
                     'type': 'ws_result',
                     'type_of_message': message_type,
                     'task_index': task_index,
-                    'is_correct': is_correct
-                }
+                    'is_correct': is_correct,
+                },
             )
 
     async def check_user_enemy_round(self) -> bool:
@@ -162,7 +161,4 @@ class PvpConsumer(AsyncWebsocketConsumer):
 
     async def add_to_groups(self):
         for user in (self.user, self.enemy):
-            await self.channel_layer.group_add(
-                f'user_{user.id}',
-                self.channel_name
-            )
+            await self.channel_layer.group_add(f'user_{user.id}', self.channel_name)

@@ -1,39 +1,91 @@
-from django.core.cache import cache
+import json
+from typing import Any
+
+from redis.asyncio import Redis
 
 
 class StatisticsCache:
     TTL = 60 * 60  # 1 час
 
-    @staticmethod
-    def key_base(round_id, user_id, round_task_id):
-        return f"stats:{round_id}:{user_id}:{round_task_id}"
+    def __init__(self, redis_client: Redis):
+        self.redis = redis_client
 
-    @classmethod
-    def key_attempts(cls, round_id, user_id, round_task_id):
-        return cls.key_base(round_id, user_id, round_task_id) + ":attempts"
+    def key(self, round_id: int, user_id: int) -> str:
+        return f"stats:{round_id}:{user_id}"
 
-    @classmethod
-    def key_data(cls, round_id, user_id, round_task_id):
-        return cls.key_base(round_id, user_id, round_task_id) + ":data"
+    async def register_attempt(
+            self,
+            round_id: int,
+            user_id: int,
+            round_task_id: int,
+            answer: str,
+            is_correct: bool,
+    ) -> None:
+        key = self.key(round_id, user_id)
 
-    @classmethod
-    def register_attempt(cls, round_id, user_id, round_task_id, answer, is_correct):
-        attempts_key = cls.key_attempts(round_id, user_id, round_task_id)
-        cache.add(attempts_key, 0, timeout=cls.TTL)
-        cache.incr(attempts_key)
+        # Получаем текущие данные для заданий
+        task_key = str(round_task_id)
+        task_data_raw = await self.redis.hget(key, task_key)
 
-        cache.set(
-            cls.key_data(round_id, user_id, round_task_id),
-            {
-                "last_answer": answer,
-                "is_correct": is_correct,
-            },
-            timeout=cls.TTL
-        )
+        if task_data_raw:
+            task_data = json.loads(task_data_raw)
+        else:
+            task_data = {"attempts": 0, "last_answer": None, "is_correct": None}
 
-    @classmethod
-    def get(cls, round_id, user_id, round_task_id):
-        attempts = cache.get(cls.key_attempts(round_id, user_id, round_task_id), 0)
-        data = cache.get(cls.key_data(round_id, user_id, round_task_id), {})
-        data["attempts"] = attempts
-        return data
+        # Обновляем данные для текущего задания
+        task_data["attempts"] += 1
+        task_data["last_answer"] = answer
+        task_data["is_correct"] = int(is_correct)
+
+        # Сохраняем обновленные данные
+        await self.redis.hset(key, task_key, json.dumps(task_data))
+        await self.redis.expire(key, self.TTL)
+
+    async def get(
+            self, round_id: int, user_id: int, round_task_id: int
+    ) -> dict[str, Any]:
+        key = self.key(round_id, user_id)
+        task_key = str(round_task_id)
+
+        task_data_raw = await self.redis.hget(key, task_key)
+        if not task_data_raw:
+            return {"attempts": 0, "last_answer": None, "is_correct": None}
+
+        task_data = json.loads(task_data_raw)
+        return {
+            "attempts": int(task_data.get("attempts", 0)),
+            "last_answer": task_data.get("last_answer"),
+            "is_correct": (
+                bool(int(task_data.get("is_correct")))
+                if task_data.get("is_correct") is not None
+                else None
+            ),
+        }
+
+    async def is_exists(self, round_id: int, user_id: int) -> bool:
+        key = self.key(round_id, user_id)
+        return await self.redis.exists(key) == 1
+
+    async def create_statistics_tables(
+        self,
+        round_id: int,
+        user_id: int,
+        round_task_id: int,
+    ) -> None:
+        key = self.key(round_id, user_id)
+        task_key = str(round_task_id)
+
+        # Если уже есть — ничего не делаем
+        exists = await self.redis.hexists(key, task_key)
+        if exists:
+            return
+
+        # Создаем базовую запись для задания
+        initial_data = {
+            "attempts": 0,
+            "last_answer": None,
+            "is_correct": None,
+        }
+
+        await self.redis.hset(key, task_key, json.dumps(initial_data))
+        await self.redis.expire(key, self.TTL)

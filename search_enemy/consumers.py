@@ -1,45 +1,31 @@
 import json
-from datetime import timedelta
 
-from django.utils.timezone import now
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 
+from core.services.redis_services import players_in_search, matchmaking_service
 from users.models import User
 from core.services.rounds_services import RoundService
-from core.services.matchmaking_services import MatchmakingService
-from search_enemy.services.search_enemy_cache import PlayerInSearchCache
-from search_enemy.services.search_enemy_cache import get_redis_connection
+
+round_service = RoundService()
 
 
-players_in_search = PlayerInSearchCache(get_redis_connection())
-matchmaking_service = MatchmakingService(players_in_search)
-
-# TODO доделать перестройку на редис и избавиться от перегрузки ответсвенностью
 class SearchEnemyConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.user = self.scope['user']
         self.user_id = self.user.id
 
-
         if self.user.is_authenticated:
             self.group_name = f'user_{self.user_id}'
             await self.accept()
-            await self.channel_layer.group_add(
-                self.group_name,
-                self.channel_name
-            )
+            await self.channel_layer.group_add(self.group_name, self.channel_name)
 
         else:
             await self.close()
 
     async def disconnect(self, code):
         if self.user.is_authenticated:
-            await self.channel_layer.group_discard(
-                self.group_name,
-                self.channel_name
-            )
-
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive(self, text_data: json):
         data = json.loads(text_data)
@@ -54,14 +40,10 @@ class SearchEnemyConsumer(AsyncWebsocketConsumer):
             ):
                 return
 
-
             rating = await self.get_user_rating()
 
-
             self.enemy = await matchmaking_service.find_enemy(
-                subject=subject,
-                rating=rating,
-                user_id=self.user_id
+                subject=subject, rating=rating, user_id=self.user_id
             )
 
             if not self.enemy:
@@ -71,26 +53,18 @@ class SearchEnemyConsumer(AsyncWebsocketConsumer):
 
             await self.send_inf_message()
 
-
-
-
-
     @database_sync_to_async
     def get_user_rating(self):
         return User.objects.get(pk=self.user_id).rating
 
-
     @database_sync_to_async
     def start_round(self):
-        return RoundService.start_round(self.user_id, self.enemy)
+        return round_service.start_round(self.user_id, self.enemy)
 
     async def room_id_message(self, event):
         room_id = event['message']
 
-        await self.send(text_data=json.dumps({
-            'type': 'room_id',
-            'room_id': room_id
-        }))
+        await self.send(text_data=json.dumps({'type': 'room_id', 'room_id': room_id}))
 
     async def send_inf_message(self):
         for user in (self.user_id, self.enemy):
@@ -99,5 +73,5 @@ class SearchEnemyConsumer(AsyncWebsocketConsumer):
                 {
                     'type': 'room_id_message',
                     'message': self.room_id,
-                }
+                },
             )

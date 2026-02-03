@@ -7,11 +7,11 @@ from users.models import User
 
 
 async def register_answer(
-        round: Round,
-        user: User,
-        round_task: RoundTask,
-        answer: str,
-        is_correct: bool,
+    round: Round,
+    user: User,
+    round_task: RoundTask,
+    answer: str,
+    is_correct: bool,
 ):
     StatisticsCache.register_attempt(
         round_id=round.id,
@@ -23,10 +23,10 @@ async def register_answer(
 
 
 def update_or_create_statistics(
-        round_task: RoundTask,
-        user: User,
-        is_correct: bool,
-        user_answer: str,
+    round_task: RoundTask,
+    user: User,
+    is_correct: bool,
+    user_answer: str,
 ):
     statistics, is_change = Statistics.objects.update_or_create(
         round_task=round_task,

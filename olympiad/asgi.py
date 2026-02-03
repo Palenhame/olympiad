@@ -8,13 +8,11 @@ from .routing import applications
 
 django_asgi_app = get_asgi_application()
 
-application = ProtocolTypeRouter({
-    "http": django_asgi_app,
-    "websocket": AllowedHostsOriginValidator(
-        SessionMiddlewareStack(
-            AuthMiddlewareStack(
-                applications
-            )
-        )
-    ),
-})
+application = ProtocolTypeRouter(
+    {
+        "http": django_asgi_app,
+        "websocket": AllowedHostsOriginValidator(
+            SessionMiddlewareStack(AuthMiddlewareStack(applications))
+        ),
+    }
+)

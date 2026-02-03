@@ -13,9 +13,7 @@ class MatchmakingService:
         await self.cache.add_player(subject, user_id, rating)
 
         enemy = await self.cache.search_player(
-            subject=subject,
-            rating=rating,
-            excluded_user=user_id
+            subject=subject, rating=rating, excluded_user=user_id
         )
 
         if not enemy:
