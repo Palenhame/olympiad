@@ -46,13 +46,6 @@ class RoundService:
                         round_task.id,
                     )
 
-            RoundTask.objects.bulk_create(
-                [
-                    RoundTask(round=game_round, task=task, order=i)
-                    for i, task in enumerate(tasks, start=1)
-                ]
-            )
-
             return game_round.id
 
     def create_statistics_tables(

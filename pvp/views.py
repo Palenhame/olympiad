@@ -15,7 +15,7 @@ def pvp(request: HttpRequest, room_id: int):
         raise Http404
 
     round_tasks = (
-        RoundTask.objects.filter(round_id=round.id)
+        RoundTask.objects.filter(round_id=room_id)
         .select_related('task')
         .only(
             'id',
