@@ -25,6 +25,7 @@ class PvpConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.round_id = self.scope["url_route"]["kwargs"]["room_id"]
         self.user = self.scope["user"]
+        print("CONNECT:", self.scope["user"], self.scope["url_route"]["kwargs"])
 
         if not await self.check_user_enemy_round():
             return
@@ -138,27 +139,31 @@ class PvpConsumer(AsyncWebsocketConsumer):
 
     async def check_user_enemy_round(self) -> bool:
         if not self.user.is_authenticated:
+            print("WS: user not authenticated")
             await self.close(code=4001)
             return False
 
         try:
             self.round = await self.return_round()
         except RoundNotFound:
+            print("WS: round not found")
             await self.close(code=4004)
             return False
 
         if not await self.is_player_in_round():
+            print("WS: user not in round")
             await self.close(code=4004)
             return False
 
         try:
             self.enemy = await self.return_enemy()
         except EnemyNotFound:
+            print("WS: enemy not found")
             await self.close(code=4009)
             return False
 
+        print("WS: ok, accept")
         return True
-
     async def add_to_groups(self):
         for user in (self.user, self.enemy):
             await self.channel_layer.group_add(f'user_{user.id}', self.channel_name)

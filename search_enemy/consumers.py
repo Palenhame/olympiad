@@ -50,6 +50,7 @@ class SearchEnemyConsumer(AsyncWebsocketConsumer):
                 return
 
             self.room_id = await self.start_round()
+            print(self.room_id)
 
             await self.send_inf_message()
 
@@ -57,9 +58,8 @@ class SearchEnemyConsumer(AsyncWebsocketConsumer):
     def get_user_rating(self):
         return User.objects.get(pk=self.user_id).rating
 
-    @database_sync_to_async
-    def start_round(self):
-        return round_service.start_round(self.user_id, self.enemy)
+    async def start_round(self):
+        return await round_service.start_round(self.user_id, self.enemy)
 
     async def room_id_message(self, event):
         room_id = event['message']

@@ -111,29 +111,21 @@
 <script>
     const roomId = "{{ room_id }}";
 
-    /**
-     * tasksData = [
-     *   ["2+2", null],
-     *   ["3*3", true],
-     *   ["5-1", false]
-     * ]
-     */
+    // tasksData = [{question:"1", is_correct:null}, ...]
     const tasksData = JSON.parse(
         document.getElementById("tasks-data").textContent
     );
 
-    const tasks = tasksData.map(t => t[0]);
-
+    const tasks = tasksData.map(t => t.question);
     let currentIndex = 0;
 
-    // 🔥 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ
     let myResults = Array(tasks.length).fill(null);
     let enemyResults = Array(tasks.length).fill(null);
 
     // инициализация статусов пользователя
-    tasksData.forEach(([, status], i) => {
-        if (status === true || status === false) {
-            myResults[i] = status;
+    tasksData.forEach((t, i) => {
+        if (t.is_correct === true || t.is_correct === false) {
+            myResults[i] = t.is_correct;
         }
     });
 
