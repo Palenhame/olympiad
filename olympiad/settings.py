@@ -16,6 +16,8 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+DELTA = 32
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -47,12 +49,16 @@ INSTALLED_APPS = [
     'search_enemy.apps.SearchEnemyConfig',
     'authentication.apps.AuthenticationConfig',
     'core.apps.CoreConfig',
+    'trainings.apps.TrainingsConfig',
     #
     'debug_toolbar',
     'rest_framework',
+    'corsheaders',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -107,7 +113,7 @@ DATABASES = {
         'USER': 'postgres',
         'PASSWORD': 'root',
         'HOST': 'localhost',  # Or the database server's address
-        'PORT': '5432',      # The default PostgreSQL port
+        'PORT': '5432',  # The default PostgreSQL port
     }
 }
 
@@ -130,10 +136,14 @@ CHANNEL_LAYERS = {
 }
 
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly',
-    ]
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
 }
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 
 # Password validation

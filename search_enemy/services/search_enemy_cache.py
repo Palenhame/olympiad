@@ -17,11 +17,11 @@ class CorrectAnswerCache:
 
     @classmethod
     def set(
-        cls,
-        round_task_id: int,
-        task_index: int,
-        correct_answer,
-        ttl: int | None = None,
+            cls,
+            round_task_id: int,
+            task_index: int,
+            correct_answer,
+            ttl: int | None = None,
     ) -> None:
         cache.set(
             cls.key(round_task_id, task_index),
@@ -58,9 +58,9 @@ class PlayerInSearchCache:
         await self.redis.zadd(subject, {str(user_id): rating})
 
     async def search_player(
-        self, subject: str, rating: int, excluded_user: int
+            self, subject: str, rating: int, excluded_user: int
     ) -> int | None:
-        delta = 50
+        delta = 300
         lua_script = await self._load_script('find_and_return_user.lua')
 
         user_id = await self.redis.evalsha(
@@ -70,13 +70,15 @@ class PlayerInSearchCache:
         return int(user_id) if user_id else None
 
     async def remove_player(self, subject: str, user_id: int) -> None:
-        await self.redis.zrem(subject, str(user_id))
+        print(f"Trying to remove: subject={subject}, user_id={user_id}, type={type(user_id)}")
+        result = await self.redis.zrem(subject, str(user_id))
+        print(f"Removed {result} elements")
 
     async def is_player_in_search(self, subject: str, user_id: int) -> bool:
         return (await self.redis.zscore(subject, str(user_id))) is not None
 
     async def remove_both_users(
-        self, subject: str, first_user_id: int, second_user_id: int
+            self, subject: str, first_user_id: int, second_user_id: int
     ) -> None:
         lua_script = await self._load_script('remove_two_users.lua')
 
@@ -86,7 +88,6 @@ class PlayerInSearchCache:
 
     def return_base_path_to_script(self) -> str:
         return os.path.join(settings.BASE_DIR, 'search_enemy/services', 'lua_scripts/')
-
 
 # async def main():
 #     player = PlayerInSearchCache(get_redis_connection())

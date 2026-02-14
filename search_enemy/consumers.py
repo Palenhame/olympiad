@@ -11,9 +11,14 @@ round_service = RoundService()
 
 
 class SearchEnemyConsumer(AsyncWebsocketConsumer):
+    def __init__(self):
+        super().__init__()
+        self.subject = None
+
     async def connect(self):
         self.user = self.scope['user']
         self.user_id = self.user.id
+        print('connected')
 
         if self.user.is_authenticated:
             self.group_name = f'user_{self.user_id}'
@@ -26,13 +31,19 @@ class SearchEnemyConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, code):
         if self.user.is_authenticated:
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
+            if self.subject:
+                print('have subject')
+                await players_in_search.remove_player(self.subject, self.user_id)
+                self.subject = None
 
     async def receive(self, text_data: json):
         data = json.loads(text_data)
 
         subject = data['subject']
+        self.subject = subject
 
         if data["type"] == "is_search" and data["is_search"]:
+
 
             if await players_in_search.is_player_in_search(
                 subject=subject,
@@ -45,12 +56,12 @@ class SearchEnemyConsumer(AsyncWebsocketConsumer):
             self.enemy = await matchmaking_service.find_enemy(
                 subject=subject, rating=rating, user_id=self.user_id
             )
+            print(self.enemy)
 
             if not self.enemy:
                 return
 
             self.room_id = await self.start_round()
-            print(self.room_id)
 
             await self.send_inf_message()
 
