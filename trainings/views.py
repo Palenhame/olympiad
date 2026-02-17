@@ -63,3 +63,4 @@ class StartTrainingApiView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request: HttpRequest) -> Response:
+        pass

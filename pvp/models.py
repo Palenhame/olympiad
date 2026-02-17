@@ -9,6 +9,7 @@ class RoundStatus(models.TextChoices):
     WAITING = 'waiting', 'Waiting'
     IN_PROGRESS = 'in_progress', 'In progress'
     FINISHED = 'finished', 'Finished'
+    TECHNICAL_ERROR = 'technical_error', 'Technical error'
 
 
 class Round(models.Model):

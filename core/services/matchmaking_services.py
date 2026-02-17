@@ -8,17 +8,21 @@ class MatchmakingService:
 
     async def find_enemy(self, subject, user_id, rating):
         if await self.cache.is_player_in_search(subject, user_id):
+            print(f"[find_enemy] {user_id} уже в очереди")
             return None
 
         await self.cache.add_player(subject, user_id, rating)
+        print(f"find_enemy {user_id} добавлен, рейтинг={rating}")
 
         enemy = await self.cache.search_player(
             subject=subject, rating=rating, excluded_user=user_id
         )
+        print(f"find_enemy враг для {user_id}: {enemy}")
+
         if not enemy:
             return None
 
-        await self.cache.remove_both_users(subject, user_id, enemy)
+        await self.cache.remove_player(subject, user_id)
 
         return enemy
 

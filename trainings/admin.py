@@ -1,3 +1,5 @@
 from django.contrib import admin
+from trainings.models import Training, TrainingTask
 
-# Register your models here.
+admin.site.register(Training)
+admin.site.register(TrainingTask)

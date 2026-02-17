@@ -5,7 +5,7 @@ from channels.db import database_sync_to_async
 
 from core.services.redis_services import players_in_search, matchmaking_service
 from users.models import User
-from core.services.rounds_services import RoundService
+from pvp.services.rounds_services import RoundService
 
 round_service = RoundService()
 
@@ -49,6 +49,7 @@ class SearchEnemyConsumer(AsyncWebsocketConsumer):
                 subject=subject,
                 user_id=self.user_id,
             ):
+                print(f'players_in_search {self.user_id}')
                 return
 
             rating = await self.get_user_rating()

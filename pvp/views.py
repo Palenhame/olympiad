@@ -7,6 +7,7 @@ from django.shortcuts import render
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import status
 
 from core.services.redis_services import statistics_cache
 from pvp.models import RoundTask, Round, RoundPlayer
@@ -49,6 +50,9 @@ class RoundApiView(APIView):
 
     def get(self, request: HttpRequest, round_id: int) -> Response:
         user_id = request.user.id
+
+        if async_to_sync(statistics_cache.is_technical_finish)(round_id):
+            return Response(status=status.HTTP_409_CONFLICT)
 
         if not async_to_sync(statistics_cache.is_exists)(round_id, user_id):
             raise Http404

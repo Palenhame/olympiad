@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Round',
+            name='Training',
             fields=[
                 (
                     'id',
@@ -45,56 +45,17 @@ class Migration(migrations.Migration):
                 ('finished_at', models.DateTimeField(blank=True, null=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 (
-                    'winner',
-                    models.ForeignKey(
-                        blank=True,
-                        null=True,
-                        on_delete=django.db.models.deletion.SET_NULL,
-                        related_name='won_rounds',
-                        to=settings.AUTH_USER_MODEL,
-                    ),
-                ),
-            ],
-        ),
-        migrations.CreateModel(
-            name='RoundPlayer',
-            fields=[
-                (
-                    'id',
-                    models.BigAutoField(
-                        auto_created=True,
-                        primary_key=True,
-                        serialize=False,
-                        verbose_name='ID',
-                    ),
-                ),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                (
-                    'player',
+                    'players',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
+                        related_name='trainings',
                         to=settings.AUTH_USER_MODEL,
-                    ),
-                ),
-                (
-                    'round',
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE, to='pvp.round'
                     ),
                 ),
             ],
         ),
-        migrations.AddField(
-            model_name='round',
-            name='players',
-            field=models.ManyToManyField(
-                related_name='rounds',
-                through='pvp.RoundPlayer',
-                to=settings.AUTH_USER_MODEL,
-            ),
-        ),
         migrations.CreateModel(
-            name='RoundTask',
+            name='TrainingTask',
             fields=[
                 (
                     'id',
@@ -108,19 +69,19 @@ class Migration(migrations.Migration):
                 ('order', models.PositiveSmallIntegerField()),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 (
-                    'round',
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        related_name='round_tasks',
-                        to='pvp.round',
-                    ),
-                ),
-                (
                     'task',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name='round_tasks',
+                        related_name='trainings_tasks',
                         to='tasks.task',
+                    ),
+                ),
+                (
+                    'training',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='trainings_tasks',
+                        to='trainings.training',
                     ),
                 ),
             ],
@@ -129,32 +90,26 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.AddField(
-            model_name='round',
+            model_name='training',
             name='tasks',
             field=models.ManyToManyField(
-                related_name='rounds', through='pvp.RoundTask', to='tasks.task'
+                related_name='trainings',
+                through='trainings.TrainingTask',
+                to='tasks.task',
             ),
         ),
         migrations.AddIndex(
-            model_name='roundplayer',
-            index=models.Index(fields=['round'], name='pvp_roundpl_round_i_2dc1e6_idx'),
-        ),
-        migrations.AddIndex(
-            model_name='roundplayer',
+            model_name='trainingtask',
             index=models.Index(
-                fields=['player'], name='pvp_roundpl_player__e7334a_idx'
+                fields=['training'], name='trainings_t_trainin_614670_idx'
             ),
         ),
         migrations.AddIndex(
-            model_name='roundtask',
-            index=models.Index(fields=['round'], name='pvp_roundta_round_i_86902a_idx'),
-        ),
-        migrations.AddIndex(
-            model_name='roundtask',
-            index=models.Index(fields=['task'], name='pvp_roundta_task_id_7f1fee_idx'),
+            model_name='trainingtask',
+            index=models.Index(fields=['task'], name='trainings_t_task_id_a7f910_idx'),
         ),
         migrations.AlterUniqueTogether(
-            name='roundtask',
-            unique_together={('round', 'order')},
+            name='trainingtask',
+            unique_together={('training', 'order')},
         ),
     ]
