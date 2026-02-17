@@ -8,7 +8,7 @@ from django.utils import timezone
 from pvp.exceptions import RoundNotFound
 from tasks.models import Task
 from pvp.models import RoundTask
-from pvp.serializer import ResultMessageSerializer, AnswerMessageSerializer
+from pvp.serializers import ResultMessageSerializer, AnswerMessageSerializer
 from core.services.redis_services import statistics_cache
 from trainings.models import Training
 

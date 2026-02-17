@@ -25,8 +25,24 @@ class TaskDifficulty(models.TextChoices):
     HARD = 'hard', 'Сложный'
 
 
-class TaskTheme(models.Model):
+class SubjectTheme(models.Model):
     name = models.CharField(max_length=100, unique=True)
+    subject = models.ForeignKey(
+        'Subject',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='themes',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Subject(models.Model):
+    name = models.CharField(max_length=50)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -47,11 +63,9 @@ class Task(models.Model):
         blank=True,
         related_name='tasks',
     )
-    theme = models.ForeignKey(
-        TaskTheme,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.CASCADE,
         related_name='tasks',
     )
     question = models.TextField()
@@ -70,6 +84,6 @@ class Task(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=['difficulty', 'theme']),
+            models.Index(fields=['difficulty', 'subject']),
         ]
 

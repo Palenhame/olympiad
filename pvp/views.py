@@ -11,7 +11,7 @@ from rest_framework import status
 
 from core.services.redis_services import statistics_cache
 from pvp.models import RoundTask, Round, RoundPlayer
-from pvp.serializer import RoundTaskSerializer, RoundStateSerializer
+from pvp.serializers import RoundTaskSerializer, RoundStateSerializer
 
 
 @login_required

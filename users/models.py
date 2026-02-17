@@ -2,6 +2,8 @@ from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 
+from tasks.models import Task
+
 
 class UserRole(models.TextChoices):
     PLAYER = 'player', 'Игрок'
@@ -36,6 +38,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         default=UserRole.PLAYER,
     )
     rating = models.IntegerField(default=100)
+    solved_tasks = models.ManyToManyField(
+        Task,
+        related_name="solved_tasks",
+        through='UserTask',
+    )
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -50,3 +57,17 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.username
+
+
+class UserTask(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+    )
+    task = models.ForeignKey(
+        Task,
+        on_delete=models.CASCADE,
+    )
+    is_correct = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

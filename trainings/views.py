@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 
 from core.services.redis_services import statistics_cache
 from trainings.models import Training
-from trainings.serializer import TrainingStateSerializer
+from trainings.serializers import TrainingStateSerializer
 
 
 def training(request, training_id):
