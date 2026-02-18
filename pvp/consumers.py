@@ -48,10 +48,8 @@ class PvpConsumer(AsyncWebsocketConsumer):
 
         if message_type == "answer":
             await self.handle_answer(data)
-        elif message_type == "stats":
-            await self.handle_stats()
-        else:
-            await self.send_error("Неизвестный тип сообщения")
+            return
+        await self.send_error("Неизвестный тип сообщения")
 
     async def handle_answer(self, data):
         task_index = data.get("task_index")
@@ -72,7 +70,7 @@ class PvpConsumer(AsyncWebsocketConsumer):
         )
 
         if both_answered:
-            await self.send_result_to_both(task_index)
+            await self.handle_stats()
 
         if await statistics_cache.is_finish_solving(
             self.round_id, self.user.id
@@ -103,30 +101,6 @@ class PvpConsumer(AsyncWebsocketConsumer):
             "current_task": user_answered,
         }))
 
-    async def ws_result(self, event):
-        total_tasks = 3
-        task_index = event["task_index"]
-        next_task = task_index + 1 if task_index + 1 < total_tasks else None
-
-        await self.send(text_data=json.dumps({
-            "type": "result",
-            "task_order": task_index,
-            "me_is_correct": event["me_is_correct"],
-            "enemy_is_correct": event["enemy_is_correct"],
-            "next_task_order": next_task,
-        }))
-
-    async def ws_finish_round(self, event):
-        await self.send(text_data=json.dumps({
-            "type": "finish_round",
-            "my_delta": event["my_delta"],
-            "my_old_rating": event["my_old_rating"],
-            "my_new_rating": event["my_new_rating"],
-            "enemy_delta": event["enemy_delta"],
-            "enemy_old_rating": event["enemy_old_rating"],
-            "enemy_new_rating": event["enemy_new_rating"],
-        }))
-
     async def register_answer(self, task_index: int, answer: str) -> None:
         correct_answer, round_task_id = await self.get_answer_to_task(
             task_index, self.round_id
@@ -138,36 +112,6 @@ class PvpConsumer(AsyncWebsocketConsumer):
             round_task_id,
             answer,
             is_correct,
-        )
-
-    async def send_result_to_both(self, task_index: int) -> None:
-        user_stats = await statistics_cache.get_task_stats(
-            self.round_id, self.user.id, task_index
-        )
-        enemy_stats = await statistics_cache.get_task_stats(
-            self.round_id, self.enemy.id, task_index
-        )
-
-        user_is_correct = user_stats["is_correct"]
-        enemy_is_correct = enemy_stats["is_correct"]
-
-        await self.channel_layer.group_send(
-            f"user_{self.user.id}",
-            {
-                "type": "ws_result",
-                "task_index": task_index,
-                "me_is_correct": user_is_correct,
-                "enemy_is_correct": enemy_is_correct,
-            },
-        )
-        await self.channel_layer.group_send(
-            f"user_{self.enemy.id}",
-            {
-                "type": "ws_result",
-                "task_index": task_index,
-                "me_is_correct": enemy_is_correct,
-                "enemy_is_correct": user_is_correct,
-            },
         )
 
     async def finish_round(self):

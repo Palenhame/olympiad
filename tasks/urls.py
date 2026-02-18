@@ -1,8 +1,9 @@
 from django.urls import path
 
-from .views import SubjectsListAPIView
+from .views import SubjectsListAPIView, ReturnTaskAPIView, TasksListAPIView
 
 urlpatterns = [
-    path('<int:pk>/', SubjectsListAPIView.as_view()),
+    path('', TasksListAPIView.as_view()),
+    path('<int:pk>/', ReturnTaskAPIView.as_view()),
     path('subjects/', SubjectsListAPIView.as_view()),
 ]

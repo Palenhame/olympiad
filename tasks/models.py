@@ -21,8 +21,8 @@ class TaskTag(models.Model):
 
 class TaskDifficulty(models.TextChoices):
     EASY = 'easy', 'Лёгкий'
-    MEDIUM = 'medium', 'Средний'
-    HARD = 'hard', 'Сложный'
+    MEDIUM = 'middle', 'Средний'
+    HARD = 'high', 'Сложный'
 
 
 class SubjectTheme(models.Model):

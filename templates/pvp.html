@@ -232,18 +232,13 @@
         return await response.json();
     }
 
-    // Поллинг — опрашиваем API раз в 3 секунды пока раунд идёт
     function startPolling() {
         pollInterval = setInterval(async () => {
             const data = await loadRoundState();
-
-            // 409 — технический финиш, loadRoundState сам покажет оверлей
             if (!data) {
                 stopPolling();
                 return;
             }
-
-            // Обновляем результаты из API (на случай если ws пропустил)
             myResults    = data.tasks.map(t => t.user_is_correct  ?? null);
             enemyResults = data.tasks.map(t => t.enemy_is_correct ?? null);
             renderButtons();
@@ -378,8 +373,6 @@
 
     async function main() {
         const responseData = await loadRoundState();
-
-        // 409 — уже показали технический финиш
         if (!responseData) return;
 
         tasks        = responseData.tasks.map(t => t.question);
@@ -387,7 +380,7 @@
         enemyResults = responseData.tasks.map(t => t.enemy_is_correct ?? null);
         currentIndex = 0;
 
-        socket = new WebSocket(`ws://${window.location.host}/ws/pvp/${roomId}/`);
+        socket = new WebSocket(`ws://${window.location.host}/ws/pvp/${roomId}/?token=${token}`);
 
         socket.onopen = () => {
             statusEl.innerText = "Подключено";
@@ -398,15 +391,25 @@
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
 
-            if (data.type === "result") {
-                myResults[data.task_order]    = data.me_is_correct;
-                enemyResults[data.task_order] = data.enemy_is_correct;
-                statusEl.innerText = data.me_is_correct ? "✓ Правильно" : "✗ Неправильно";
-                if (data.next_task_order !== null) currentIndex = data.next_task_order;
-                renderTask();
-            }
-
             if (data.type === "stats") {
+                // Обновляем результаты из статистики
+                const taskIndex = data.current_task - 1; // current_task начинается с 1
+
+                // Запрашиваем актуальное состояние из API
+                loadRoundState().then(apiData => {
+                    if (apiData) {
+                        myResults    = apiData.tasks.map(t => t.user_is_correct  ?? null);
+                        enemyResults = apiData.tasks.map(t => t.enemy_is_correct ?? null);
+
+                        // Переходим на следующую задачу если текущая решена
+                        if (myResults[currentIndex] !== null && currentIndex < tasks.length - 1) {
+                            currentIndex++;
+                        }
+
+                        renderTask();
+                    }
+                });
+
                 myProgressEl.style.width    = data.completion_percentage + "%";
                 enemyProgressEl.style.width = data.enemy_correct_percentage + "%";
             }
@@ -422,7 +425,6 @@
 
         socket.onclose = () => {
             statusEl.innerText = "Соединение разорвано";
-            // Поллинг поймает 409 если раунд завершился
         };
 
         document.getElementById("send").onclick = sendAnswer;
