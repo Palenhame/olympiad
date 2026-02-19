@@ -9,7 +9,7 @@ from django.core.cache import cache
 
 
 class CorrectAnswerCache:
-    TTL = 60 * 60  # 1 час
+    TTL = 60 * 60
 
     @classmethod
     def key(cls, round_task_id: int, task_index: int) -> str:

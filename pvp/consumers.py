@@ -191,7 +191,7 @@ class PvpConsumer(AsyncWebsocketConsumer):
     def get_answer_to_task(self, task_index: int, round_id: int):
         try:
             round_task = RoundTask.objects.select_related("task").get(
-                round=round_id, order=task_index + 1  # order начинается с 1
+                round=round_id, order=task_index + 1
             )
         except RoundTask.DoesNotExist:
             raise RoundTaskNotFound

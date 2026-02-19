@@ -12,7 +12,7 @@ class Training(models.Model):
         choices=RoundStatus.choices,
         default=RoundStatus.WAITING,
     )
-    players = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trainings')
+    player = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trainings')
     tasks = models.ManyToManyField(
         Task,
         related_name='trainings',

@@ -68,6 +68,13 @@ class Task(models.Model):
         on_delete=models.CASCADE,
         related_name='tasks',
     )
+    theme = models.ForeignKey(
+        SubjectTheme,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='tasks',
+    )
     question = models.TextField()
     solution = models.TextField()
     correct_answer = models.TextField()
