@@ -241,7 +241,7 @@
         trainingStatus.textContent = "Создаём тренировку...";
 
         try {
-            const res = await fetch(`/trainings/start/?${params}`, {
+            const res = await fetch(`/trainings/start_training/?${params}`, {
                 method: "POST",
                 credentials: "include",
             });

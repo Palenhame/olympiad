@@ -37,7 +37,7 @@ class TrainingService:
     def _create_training(self, user_id: int) -> Training:
         current_time = now()
         return Training.objects.create(
-            players_id=user_id,
+            player_id=user_id,
             started_at=current_time,
             planed_finish=current_time + timedelta(hours=2),
         )

@@ -1,9 +1,9 @@
 from django.urls import path
 
-from .views import training, TrainingApiView
+from .views import training, TrainingApiView, StartTrainingApiView
 
 urlpatterns = [
     path('<int:training_id>/', training),
-    path('api/<int:round_id>/', TrainingApiView.as_view()),
-    path('api/start_training/', TrainingApiView.as_view()),
+    path('<int:round_id>/', TrainingApiView.as_view()),
+    path('start_training/', StartTrainingApiView.as_view()),
 ]
