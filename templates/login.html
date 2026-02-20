@@ -1,0 +1,44 @@
+<form id="login-form">
+  <label>
+    Email:
+    <input type="email" name="email" id="email" required>
+  </label>
+  <br><br>
+  <label>
+    Password:
+    <input type="password" name="password" id="password" required>
+  </label>
+  <br><br>
+  <button type="submit">Login</button>
+</form>
+
+<script>
+const form = document.getElementById('login-form');
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+
+  try {
+    const response = await fetch('http://127.0.0.1:8000/auth/login/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ email, password }),
+      credentials: 'include'
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (response.ok && data) {
+      document.getElementById('result').textContent = `Welcome, ${data.username}!`;
+      document.getElementById('error').textContent = '';
+    } else {
+      document.getElementById('error').textContent = JSON.stringify(data);
+      document.getElementById('result').textContent = '';
+    }
+  } catch (err) {
+    document.getElementById('error').textContent = err.message;
+  }
+});
+</script>

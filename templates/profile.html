@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+            padding: 30px 20px;
+            color: #333;
+        }
+
+        .page {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Шапка профиля */
+        .profile-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .avatar {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4CAF50, #2196F3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: #fff;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .profile-info h1 {
+            font-size: 22px;
+            margin-bottom: 4px;
+        }
+
+        .profile-info .role {
+            font-size: 13px;
+            color: #999;
+        }
+
+        .rating-badge {
+            margin-left: auto;
+            text-align: center;
+            background: linear-gradient(135deg, #ff9800, #f44336);
+            color: #fff;
+            border-radius: 10px;
+            padding: 10px 20px;
+        }
+
+        .rating-badge .value {
+            font-size: 28px;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        .rating-badge .label {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 2px;
+        }
+
+        /* Карточки статистики */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+
+        .card .card-title {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .card .card-value {
+            font-size: 26px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .card .card-sub {
+            font-size: 12px;
+            color: #bbb;
+            margin-top: 4px;
+        }
+
+        /* Секции тренировка / pvp */
+        .section {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .section h2 {
+            font-size: 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .stat-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 14px;
+            text-align: center;
+        }
+
+        .stat-item .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .stat-item .stat-label {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        .accuracy-bar {
+            margin-top: 12px;
+            background: #f0f0f0;
+            border-radius: 99px;
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .accuracy-fill {
+            height: 100%;
+            border-radius: 99px;
+            transition: width 0.6s ease;
+        }
+
+        .fill-green { background: linear-gradient(90deg, #4CAF50, #8BC34A); }
+        .fill-blue  { background: linear-gradient(90deg, #2196F3, #03A9F4); }
+
+        .accuracy-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        /* Скелетон загрузки */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.2s infinite;
+            border-radius: 6px;
+            height: 26px;
+        }
+
+        @keyframes shimmer {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .error-msg {
+            text-align: center;
+            color: #f44336;
+            padding: 20px;
+        }
+
+        @media (max-width: 560px) {
+            .cards, .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .profile-card { flex-wrap: wrap; }
+            .rating-badge { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <!-- Профиль -->
+    <div class="profile-card">
+        <div class="avatar" id="avatar">...</div>
+        <div class="profile-info">
+            <h1 id="username"><div class="skeleton" style="width:140px"></div></h1>
+            <div class="role" id="role"></div>
+        </div>
+        <div class="rating-badge">
+            <div class="value" id="rating">—</div>
+            <div class="label">Рейтинг</div>
+        </div>
+    </div>
+
+    <!-- Общая статистика -->
+    <div class="cards">
+        <div class="card">
+            <div class="card-title">Всего задач</div>
+            <div class="card-value" id="total-tasks">—</div>
+            <div class="card-sub">тренировки + pvp</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Точность</div>
+            <div class="card-value" id="total-accuracy">—</div>
+            <div class="card-sub">общая</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Скорость</div>
+            <div class="card-value" id="total-speed">—</div>
+            <div class="card-sub">сек / задача</div>
+        </div>
+    </div>
+
+    <!-- Тренировки -->
+    <div class="section">
+        <h2>🏋️ Тренировки</h2>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value" id="train-count">—</div>
+                <div class="stat-label">Задач решено</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="train-accuracy">—</div>
+                <div class="stat-label">Точность</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="train-speed">—</div>
+                <div class="stat-label">Сек / задача</div>
+            </div>
+        </div>
+        <div class="accuracy-bar" style="margin-top:14px">
+            <div class="accuracy-fill fill-green" id="train-bar" style="width:0%"></div>
+        </div>
+        <div class="accuracy-label">
+            <span>0%</span>
+            <span id="train-bar-label">0%</span>
+            <span>100%</span>
+        </div>
+    </div>
+
+    <!-- PVP -->
+    <div class="section">
+        <h2>⚔️ PVP</h2>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value" id="pvp-count">—</div>
+                <div class="stat-label">Задач решено</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="pvp-accuracy">—</div>
+                <div class="stat-label">Точность</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="pvp-speed">—</div>
+                <div class="stat-label">Сек / задача</div>
+            </div>
+        </div>
+        <div class="accuracy-bar" style="margin-top:14px">
+            <div class="accuracy-fill fill-blue" id="pvp-bar" style="width:0%"></div>
+        </div>
+        <div class="accuracy-label">
+            <span>0%</span>
+            <span id="pvp-bar-label">0%</span>
+            <span>100%</span>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Если нужен профиль другого пользователя — передай pk в URL: /profile/?pk=5
+    const params = new URLSearchParams(window.location.search);
+    const pk = params.get('pk');
+    const API_URL = pk ? `/users/${pk}/` : '/users/me/';
+
+    async function loadProfile() {
+        try {
+            const res = await fetch(API_URL, { credentials: 'include' });
+            if (!res.ok) throw new Error(res.status);
+            const data = await res.json();
+            render(data);
+        } catch (e) {
+            document.querySelector('.page').innerHTML =
+                `<div class="error-msg">Не удалось загрузить профиль (${e.message})</div>`;
+        }
+    }
+
+    function render(data) {
+        const s = data.stats;
+        const name = data.username;
+
+        // Шапка
+        document.getElementById('avatar').textContent = name[0].toUpperCase();
+        document.getElementById('username').textContent = name;
+        document.getElementById('rating').textContent = s.rate;
+
+        // Общая
+        const totalTasks = s.trains_count + s.pvp_count;
+        document.getElementById('total-tasks').textContent = totalTasks;
+        document.getElementById('total-accuracy').textContent = s.accuracy_total + '%';
+        document.getElementById('total-speed').textContent = s.speed_total + 's';
+
+        // Тренировки
+        document.getElementById('train-count').textContent = s.trains_count;
+        document.getElementById('train-accuracy').textContent = s.accuracy_train + '%';
+        document.getElementById('train-speed').textContent = s.speed_train + 's';
+        document.getElementById('train-bar').style.width = s.accuracy_train + '%';
+        document.getElementById('train-bar-label').textContent = s.accuracy_train + '%';
+
+        // PVP
+        document.getElementById('pvp-count').textContent = s.pvp_count;
+        document.getElementById('pvp-accuracy').textContent = s.accuracy_pvp + '%';
+        document.getElementById('pvp-speed').textContent = s.speed_pvp + 's';
+        document.getElementById('pvp-bar').style.width = s.accuracy_pvp + '%';
+        document.getElementById('pvp-bar-label').textContent = s.accuracy_pvp + '%';
+    }
+
+    loadProfile();
+</script>
+</body>
+</html>

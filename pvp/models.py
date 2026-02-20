@@ -9,6 +9,7 @@ class RoundStatus(models.TextChoices):
     WAITING = 'waiting', 'Waiting'
     IN_PROGRESS = 'in_progress', 'In progress'
     FINISHED = 'finished', 'Finished'
+    TECHNICAL_ERROR = 'technical_error', 'Technical error'
 
 
 class Round(models.Model):
@@ -17,11 +18,7 @@ class Round(models.Model):
         choices=RoundStatus.choices,
         default=RoundStatus.WAITING,
     )
-    players = models.ManyToManyField(
-        User,
-        related_name='rounds',
-        through='RoundPlayer'
-    )
+    players = models.ManyToManyField(User, related_name='rounds', through='RoundPlayer')
     tasks = models.ManyToManyField(
         Task,
         related_name='rounds',
@@ -72,14 +69,8 @@ class RoundTask(models.Model):
 
 
 class RoundPlayer(models.Model):
-    round = models.ForeignKey(
-        Round,
-        on_delete=models.CASCADE
-    )
-    player = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE
-    )
+    round = models.ForeignKey(Round, on_delete=models.CASCADE)
+    player = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -87,4 +78,3 @@ class RoundPlayer(models.Model):
             models.Index(fields=['round']),
             models.Index(fields=['player']),
         ]
-

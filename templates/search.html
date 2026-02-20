@@ -1,19 +1,25 @@
+```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Поиск противника</title>
+    <title>Главная</title>
 
     <style>
+        * { box-sizing: border-box; }
+
         body {
             font-family: Arial, sans-serif;
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             background-color: #f5f5f5;
+            gap: 20px;
+            flex-wrap: wrap;
+            padding: 20px;
         }
 
         .container {
@@ -25,119 +31,241 @@
             width: 320px;
         }
 
+        h1 { font-size: 20px; margin-bottom: 10px; }
+
         #status {
-            margin: 20px 0;
-            font-size: 18px;
+            margin: 12px 0;
+            font-size: 16px;
             color: #666;
             min-height: 24px;
         }
 
-        #searchButton {
-            padding: 12px 24px;
-            font-size: 18px;
-            background-color: #4CAF50;
-            color: #fff;
-            border: none;
+        select, button {
+            width: 100%;
+            padding: 10px;
+            font-size: 15px;
             border-radius: 5px;
-            cursor: pointer;
+            border: 1px solid #ccc;
+            margin-top: 8px;
         }
 
-        #searchButton:disabled {
+        button {
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+
+        button:disabled {
             background-color: #ccc;
             cursor: not-allowed;
+        }
+
+        #searchButton { background-color: #4CAF50; }
+        #trainingButton { background-color: #2196F3; }
+
+        label {
+            display: block;
+            text-align: left;
+            font-size: 13px;
+            color: #444;
+            margin-top: 10px;
+        }
+
+        .section-title {
+            font-size: 13px;
+            color: #999;
+            margin: 14px 0 4px;
+            text-align: left;
+            border-top: 1px solid #eee;
+            padding-top: 12px;
         }
     </style>
 </head>
 <body>
 
+<!-- Блок PVP -->
 <div class="container">
-    <h1>Поиск противника</h1>
-    <div id="status">Подключение...</div>
-    <button id="searchButton" disabled>Поиск противника</button>
+    <h1>⚔️ Поиск противника</h1>
+    <div id="pvp-status">Подключение...</div>
+    <button id="searchButton" disabled>Найти противника</button>
+</div>
+
+<!-- Блок тренировки -->
+<div class="container">
+    <h1>🏋️ Тренировка</h1>
+
+    <label>Сложность</label>
+    <select id="difficulty">
+        <option value="">Любая</option>
+        <option value="easy">Лёгкая</option>
+        <option value="middle">Средняя</option>
+        <option value="hard">Сложная</option>
+    </select>
+
+    <label>Предмет</label>
+    <select id="subject">
+        <option value="">Любой</option>
+    </select>
+
+    <label>Тема</label>
+    <select id="theme">
+        <option value="">Любая</option>
+    </select>
+
+    <div id="training-status" style="margin-top: 12px; font-size: 14px; color: #666; min-height: 20px;"></div>
+    <button id="trainingButton">Начать тренировку</button>
 </div>
 
 <script>
+    /* ───────────── PVP ───────────── */
     const WS_URL = "ws://127.0.0.1:8000/ws/pvp/";
-
     let socket = null;
     let isSearching = false;
 
-    const statusEl = document.getElementById("status");
+    const pvpStatus = document.getElementById("pvp-status");
     const searchBtn = document.getElementById("searchButton");
 
     function connectWebSocket() {
         socket = new WebSocket(WS_URL);
 
         socket.onopen = () => {
-            statusEl.textContent = "Готов к поиску противника";
+            pvpStatus.textContent = "Готов к поиску противника";
             searchBtn.disabled = false;
         };
 
         socket.onmessage = (event) => {
             let data;
-
-            try {
-                data = JSON.parse(event.data);
-            } catch (e) {
-                console.error("Invalid JSON:", event.data);
-                return;
-            }
+            try { data = JSON.parse(event.data); }
+            catch (e) { return; }
 
             if (data.type === "room_id") {
-                statusEl.textContent = `Противник найден! Матч #${data.room_id}`;
-
-                setTimeout(() => {
-                    window.location.href = `/pvp/${data.room_id}/`;
-                }, 1000);
+                pvpStatus.textContent = `Противник найден! Матч #${data.room_id}`;
+                setTimeout(() => { window.location.href = `/pvp/${data.room_id}/`; }, 1000);
             }
-
             if (data.type === "status") {
-                statusEl.textContent = data.message;
+                pvpStatus.textContent = data.message;
             }
         };
 
-        socket.onerror = () => {
-            statusEl.textContent = "Ошибка соединения";
-            resetState();
-        };
-
-        socket.onclose = () => {
-            statusEl.textContent = "Соединение закрыто";
-            resetState();
-        };
+        socket.onerror = () => { pvpStatus.textContent = "Ошибка соединения"; resetPvp(); };
+        socket.onclose = () => { pvpStatus.textContent = "Соединение закрыто"; resetPvp(); };
     }
 
-    function resetState() {
+    function resetPvp() {
         isSearching = false;
         searchBtn.disabled = true;
     }
 
     searchBtn.addEventListener("click", () => {
         if (!socket || socket.readyState !== WebSocket.OPEN) {
-            statusEl.textContent = "Нет соединения с сервером";
+            pvpStatus.textContent = "Нет соединения с сервером";
             return;
         }
-
         isSearching = true;
         searchBtn.disabled = true;
-        statusEl.textContent = "Ищем противника...";
-
-        socket.send(JSON.stringify({
-            type: "is_search",
-            is_search: true
-        }));
+        pvpStatus.textContent = "Ищем противника...";
+        socket.send(JSON.stringify({ type: "is_search", is_search: true, subject: "math" }));
     });
 
-    window.onload = connectWebSocket;
+    window.onload = () => {
+        connectWebSocket();
+        loadSubjects();
+    };
 
     setInterval(() => {
         if (!socket || socket.readyState === WebSocket.CLOSED) {
-            if (!isSearching) {
-                connectWebSocket();
-            }
+            if (!isSearching) connectWebSocket();
         }
     }, 5000);
+
+
+    /* ───────────── Тренировка ───────────── */
+    const subjectEl = document.getElementById("subject");
+    const themeEl = document.getElementById("theme");
+    const trainingBtn = document.getElementById("trainingButton");
+    const trainingStatus = document.getElementById("training-status");
+
+    // subjects[id] = { id, name, themes: [{id, name}] }
+    let subjectsData = [];
+
+    async function loadSubjects() {
+        try {
+            const res = await fetch("/tasks/subjects/", { credentials: "include" });
+            if (!res.ok) throw new Error();
+            subjectsData = await res.json();
+
+            subjectsData.forEach(subject => {
+                const opt = document.createElement("option");
+                opt.value = subject.id;
+                opt.textContent = subject.name;
+                subjectEl.appendChild(opt);
+            });
+        } catch {
+            trainingStatus.textContent = "Не удалось загрузить предметы";
+        }
+    }
+
+    // При смене предмета — обновляем темы
+    subjectEl.addEventListener("change", () => {
+        const selectedId = parseInt(subjectEl.value);
+
+        // Сбрасываем темы
+        themeEl.innerHTML = '<option value="">Любая</option>';
+
+        if (!selectedId) return;
+
+        const subject = subjectsData.find(s => s.id === selectedId);
+        if (!subject) return;
+
+        subject.themes.forEach(theme => {
+            const opt = document.createElement("option");
+            opt.value = theme.id;
+            opt.textContent = theme.name;
+            themeEl.appendChild(opt);
+        });
+    });
+
+    trainingBtn.addEventListener("click", async () => {
+        const difficulty = document.getElementById("difficulty").value;
+        const subjectId = subjectEl.value;
+        const themeId = themeEl.value;
+
+        // Собираем query params только если значение выбрано
+        const params = new URLSearchParams();
+        if (difficulty) params.append("difficulty", difficulty);
+        if (subjectId)  params.append("subject_id", subjectId);
+        if (themeId)    params.append("theme_id", themeId);
+
+        trainingBtn.disabled = true;
+        trainingStatus.textContent = "Создаём тренировку...";
+
+        try {
+            const res = await fetch(`/trainings/start_training/?${params}`, {
+                method: "POST",
+                credentials: "include",
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                trainingStatus.textContent = data.error || "Ошибка при создании тренировки";
+                trainingBtn.disabled = false;
+                return;
+            }
+
+            trainingStatus.textContent = `Тренировка #${data.training_id} начата!`;
+            setTimeout(() => {
+                window.location.href = `/trainings/${data.training_id}/`;
+            }, 800);
+
+        } catch {
+            trainingStatus.textContent = "Ошибка соединения";
+            trainingBtn.disabled = false;
+        }
+    });
 </script>
 
 </body>
 </html>
+```

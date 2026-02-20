@@ -3,183 +3,288 @@
 <head>
     <meta charset="UTF-8">
     <title>PvP</title>
-
     <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
             font-family: sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 16px;
         }
 
-        .progress-wrapper {
-            margin-bottom: 15px;
+        h2 { margin-bottom: 20px; font-size: 22px; color: #a78bfa; }
+
+        .card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 16px;
         }
 
-        .progress-label {
-            font-size: 14px;
-            margin-bottom: 3px;
-        }
+        .progress-label { font-size: 13px; color: #aaa; margin-bottom: 6px; }
 
         .progress-bar {
-            width: 100%;
-            height: 16px;
-            background: #ddd;
-            border-radius: 8px;
-            overflow: hidden;
+            width: 100%; height: 10px;
+            background: #2a2a4a; border-radius: 8px;
+            overflow: hidden; margin-bottom: 12px;
         }
 
-        .progress-fill {
-            height: 100%;
-            width: 0%;
-            transition: width 0.3s;
-        }
+        .progress-fill { height: 100%; width: 0%; border-radius: 8px; transition: width 0.4s ease; }
+        .my-fill    { background: #4ade80; }
+        .enemy-fill { background: #f87171; }
 
-        .my-fill {
-            background: #4caf50;
-        }
-
-        .enemy-fill {
-            background: #f44336;
-        }
-
-        .tasks {
-            display: flex;
-            gap: 6px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
+        .tasks { display: flex; gap: 8px; flex-wrap: wrap; }
 
         .task-btn {
-            width: 40px;
-            height: 40px;
-            cursor: pointer;
-            border: none;
-            border-radius: 4px;
-            background: #eee;
+            width: 44px; height: 44px; cursor: pointer;
+            border: 2px solid #2a2a4a; border-radius: 8px;
+            background: #0f3460; color: #eee;
+            font-size: 15px; font-weight: bold;
+            position: relative; transition: transform 0.1s;
         }
 
-        .my-correct { background: #4caf50; color: white; }
-        .my-wrong   { background: #f44336; color: white; }
+        .task-btn:hover  { transform: scale(1.08); }
+        .task-btn.active { border-color: #a78bfa; }
+        .task-btn.my-correct { background: #166534; border-color: #4ade80; }
+        .task-btn.my-wrong   { background: #7f1d1d; border-color: #f87171; }
 
-        .enemy-correct { outline: 3px solid #4caf50; }
-        .enemy-wrong   { outline: 3px solid #f44336; }
+        .enemy-dot {
+            position: absolute; top: 3px; right: 3px;
+            width: 8px; height: 8px; border-radius: 50%;
+        }
+        .enemy-correct-dot { background: #4ade80; }
+        .enemy-wrong-dot   { background: #f87171; }
+
+        .task-text { font-size: 16px; line-height: 1.5; color: #e2e8f0; min-height: 48px; }
+
+        .input-row { display: flex; gap: 10px; margin-top: 12px; }
+
+        input[type="text"] {
+            flex: 1; padding: 10px 14px; border-radius: 8px;
+            border: 1px solid #2a2a4a; background: #0f3460;
+            color: #eee; font-size: 15px; outline: none;
+        }
+        input[type="text"]:focus { border-color: #a78bfa; }
+
+        button.send-btn {
+            padding: 10px 20px; border-radius: 8px; border: none;
+            background: #7c3aed; color: white; font-size: 15px;
+            cursor: pointer; transition: background 0.2s;
+        }
+        button.send-btn:hover { background: #6d28d9; }
+
+        .status-line { font-size: 13px; color: #94a3b8; text-align: center; }
+
+        .finish-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.85); z-index: 1000;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .finish-overlay.show { display: flex; }
+
+        .finish-card {
+            background: #16213e; border-radius: 16px;
+            padding: 36px 32px; max-width: 420px; width: 100%; text-align: center;
+        }
+
+        .finish-title { font-size: 26px; font-weight: bold; margin-bottom: 8px; }
+        .finish-title.win  { color: #4ade80; }
+        .finish-title.lose { color: #f87171; }
+        .finish-title.draw { color: #facc15; }
+        .finish-title.technical { color: #94a3b8; }
+
+        .rating-change { font-size: 18px; margin-bottom: 24px; color: #cbd5e1; }
+        .rating-change span.plus  { color: #4ade80; font-weight: bold; }
+        .rating-change span.minus { color: #f87171; font-weight: bold; }
+
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+
+        .stat-box { background: #0f3460; border-radius: 10px; padding: 14px; }
+        .stat-box .stat-label { font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+        .stat-box .stat-value { font-size: 22px; font-weight: bold; color: #e2e8f0; }
+
+        .tasks-result { display: flex; gap: 8px; justify-content: center; margin-bottom: 24px; }
+
+        .task-result-item {
+            width: 40px; height: 40px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 15px;
+        }
+        .task-result-item.correct { background: #166534; color: #4ade80; }
+        .task-result-item.wrong   { background: #7f1d1d; color: #f87171; }
+        .task-result-item.skipped { background: #1e293b; color: #64748b; }
+
+        .technical-msg {
+            font-size: 15px; color: #94a3b8;
+            margin-bottom: 24px; line-height: 1.5;
+        }
+
+        .play-again-btn {
+            padding: 12px 32px; border-radius: 10px; border: none;
+            background: #7c3aed; color: white; font-size: 16px;
+            cursor: pointer; transition: background 0.2s;
+        }
+        .play-again-btn:hover { background: #6d28d9; }
     </style>
 </head>
 <body>
 
+<div class="finish-overlay" id="finishOverlay">
+    <div class="finish-card">
+        <div class="finish-title" id="finishTitle">Раунд завершён</div>
+        <div class="rating-change" id="ratingChange"></div>
+        <div class="technical-msg" id="technicalMsg" style="display:none">
+            Раунд завершён по техническим обстоятельствам
+        </div>
+
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-box">
+                <div class="stat-label">Мой рейтинг</div>
+                <div class="stat-value" id="myNewRating">—</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Рейтинг врага</div>
+                <div class="stat-value" id="enemyNewRating">—</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Правильных</div>
+                <div class="stat-value" id="myCorrectCount">—</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">У врага</div>
+                <div class="stat-value" id="enemyCorrectCount">—</div>
+            </div>
+        </div>
+
+        <div class="tasks-result" id="tasksResult"></div>
+        <button class="play-again-btn" onclick="window.location.href='/'">Играть снова</button>
+    </div>
+</div>
+
 <h2>PvP режим</h2>
 
-<!-- ПРОГРЕСС -->
-<div class="progress-wrapper">
+<div class="card">
     <div class="progress-label">Ты</div>
     <div class="progress-bar">
         <div class="progress-fill my-fill" id="myProgress"></div>
     </div>
-</div>
-
-<div class="progress-wrapper">
     <div class="progress-label">Противник</div>
     <div class="progress-bar">
         <div class="progress-fill enemy-fill" id="enemyProgress"></div>
     </div>
+    <div class="tasks" id="taskButtons"></div>
 </div>
 
-<hr>
-
-<div class="tasks" id="taskButtons"></div>
-
-<hr>
-
-<div>
-    <strong>Задание:</strong>
-    <div id="task">Ожидание...</div>
+<div class="card">
+    <div class="task-text" id="task">Ожидание...</div>
+    <div class="input-row">
+        <input type="text" id="answer" placeholder="Введите ответ">
+        <button class="send-btn" id="send">Отправить</button>
+    </div>
 </div>
 
-<hr>
-
-<input type="text" id="answer" placeholder="Введите ответ">
-<button id="send">Отправить</button>
-
-<hr>
-
-<div>
-    <strong>Статус:</strong>
-    <div id="status">Подключение...</div>
-</div>
-
-<!-- данные из Django -->
-{{ tasks|json_script:"tasks-data" }}
+<div class="status-line" id="status">Подключение...</div>
 
 <script>
-    const roomId = "{{ room_id }}";
+    const roomId = window.location.pathname.split("/").filter(Boolean).pop();
+    const token  = localStorage.getItem("access_token");
 
-    /**
-     * tasksData = [
-     *   ["2+2", null],
-     *   ["3*3", true],
-     *   ["5-1", false]
-     * ]
-     */
-    const tasksData = JSON.parse(
-        document.getElementById("tasks-data").textContent
-    );
-
-    const tasks = tasksData.map(t => t[0]);
-
+    let myResults    = [];
+    let enemyResults = [];
+    let tasks        = [];
     let currentIndex = 0;
+    let socket       = null;
+    let pollInterval = null;
 
-    // 🔥 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ
-    let myResults = Array(tasks.length).fill(null);
-    let enemyResults = Array(tasks.length).fill(null);
-
-    // инициализация статусов пользователя
-    tasksData.forEach(([, status], i) => {
-        if (status === true || status === false) {
-            myResults[i] = status;
-        }
-    });
-
-    const socket = new WebSocket(
-        `ws://${window.location.host}/ws/pvp/${roomId}/`
-    );
-
-    const taskEl = document.getElementById("task");
-    const statusEl = document.getElementById("status");
-    const buttonsEl = document.getElementById("taskButtons");
-
-    const myProgressEl = document.getElementById("myProgress");
+    const taskEl          = document.getElementById("task");
+    const statusEl        = document.getElementById("status");
+    const buttonsEl       = document.getElementById("taskButtons");
+    const myProgressEl    = document.getElementById("myProgress");
     const enemyProgressEl = document.getElementById("enemyProgress");
+    const finishOverlay   = document.getElementById("finishOverlay");
+
+    // -----------------------------------------------------------------
+    // API
+    // -----------------------------------------------------------------
+
+    async function loadRoundState() {
+        const response = await fetch(`/pvp/api/${roomId}/`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        if (response.status === 409) {
+            showTechnicalFinish();
+            return null;
+        }
+
+        if (!response.ok) {
+            statusEl.innerText = "Ошибка API: " + response.status;
+            return null;
+        }
+
+        return await response.json();
+    }
+
+    function startPolling() {
+        pollInterval = setInterval(async () => {
+            const data = await loadRoundState();
+            if (!data) {
+                stopPolling();
+                return;
+            }
+            myResults    = data.tasks.map(t => t.user_is_correct  ?? null);
+            enemyResults = data.tasks.map(t => t.enemy_is_correct ?? null);
+            renderButtons();
+        }, 3000);
+    }
+
+    function stopPolling() {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // Render
+    // -----------------------------------------------------------------
 
     function calcProgress(results) {
-        const solved = results.filter(v => v === true || v === false).length;
-        return (solved / tasks.length) * 100;
+        return (results.filter(v => v !== null).length / tasks.length) * 100;
     }
 
     function updateProgress() {
-        myProgressEl.style.width = calcProgress(myResults) + "%";
+        myProgressEl.style.width    = calcProgress(myResults) + "%";
         enemyProgressEl.style.width = calcProgress(enemyResults) + "%";
     }
 
     function renderButtons() {
         buttonsEl.innerHTML = "";
-
         tasks.forEach((_, i) => {
             const btn = document.createElement("button");
             btn.className = "task-btn";
             btn.innerText = i + 1;
 
-            if (myResults[i] === true) btn.classList.add("my-correct");
+            if (i === currentIndex)     btn.classList.add("active");
+            if (myResults[i] === true)  btn.classList.add("my-correct");
             if (myResults[i] === false) btn.classList.add("my-wrong");
 
-            if (enemyResults[i] === true) btn.classList.add("enemy-correct");
-            if (enemyResults[i] === false) btn.classList.add("enemy-wrong");
+            if (enemyResults[i] !== null) {
+                const dot = document.createElement("div");
+                dot.className = "enemy-dot " + (enemyResults[i] ? "enemy-correct-dot" : "enemy-wrong-dot");
+                btn.appendChild(dot);
+            }
 
-            btn.onclick = () => {
-                currentIndex = i;
-                renderTask();
-            };
-
+            btn.onclick = () => { currentIndex = i; renderTask(); };
             buttonsEl.appendChild(btn);
         });
-
         updateProgress();
     }
 
@@ -188,35 +293,147 @@
         renderButtons();
     }
 
-    socket.onopen = () => {
-        statusEl.innerText = "Подключено";
-        renderTask();
-    };
+    // -----------------------------------------------------------------
+    // Finish
+    // -----------------------------------------------------------------
 
-    socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
+    function showTechnicalFinish() {
+        stopPolling();
+        if (socket) socket.close();
 
-        if (data.type === "result") {
-            myResults[data.task_index] = data.correct;
-            statusEl.innerText = data.correct ? "Правильно" : "Неправильно";
-            renderButtons();
-        }
+        const titleEl = document.getElementById("finishTitle");
+        titleEl.textContent = "Технический финиш";
+        titleEl.className   = "finish-title technical";
 
-        if (data.type === "enemy_result") {
-            enemyResults[data.task_index] = data.correct;
-            renderButtons();
-        }
-    };
+        document.getElementById("ratingChange").style.display  = "none";
+        document.getElementById("statsGrid").style.display     = "none";
+        document.getElementById("technicalMsg").style.display  = "block";
+        document.getElementById("tasksResult").style.display   = "none";
 
-    document.getElementById("send").onclick = () => {
+        finishOverlay.classList.add("show");
+    }
+
+    function showFinish(data) {
+        stopPolling();
+
+        const delta  = data.my_delta;
+        const isWin  = delta > 0 && data.my_delta !== data.enemy_delta;
+        const isDraw = data.my_delta === data.enemy_delta;
+
+        const titleEl = document.getElementById("finishTitle");
+        if (isDraw)       { titleEl.textContent = "Ничья!";    titleEl.className = "finish-title draw"; }
+        else if (isWin)   { titleEl.textContent = "Победа!";   titleEl.className = "finish-title win";  }
+        else              { titleEl.textContent = "Поражение"; titleEl.className = "finish-title lose"; }
+
+        const sign = delta >= 0 ? "+" : "";
+        document.getElementById("ratingChange").innerHTML =
+            `Рейтинг: ${data.my_old_rating} → ${data.my_new_rating} &nbsp;<span class="${delta >= 0 ? 'plus' : 'minus'}">${sign}${delta}</span>`;
+
+        document.getElementById("myNewRating").textContent    = data.my_new_rating;
+        document.getElementById("enemyNewRating").textContent = data.enemy_new_rating;
+
+        const myCorrect    = myResults.filter(v => v === true).length;
+        const enemyCorrect = enemyResults.filter(v => v === true).length;
+        document.getElementById("myCorrectCount").textContent    = `${myCorrect}/${tasks.length}`;
+        document.getElementById("enemyCorrectCount").textContent = `${enemyCorrect}/${tasks.length}`;
+
+        const tasksResultEl = document.getElementById("tasksResult");
+        tasksResultEl.innerHTML = "";
+        myResults.forEach((res, i) => {
+            const el = document.createElement("div");
+            el.className  = "task-result-item " + (res === true ? "correct" : res === false ? "wrong" : "skipped");
+            el.textContent = i + 1;
+            tasksResultEl.appendChild(el);
+        });
+
+        finishOverlay.classList.add("show");
+    }
+
+    // -----------------------------------------------------------------
+    // WebSocket
+    // -----------------------------------------------------------------
+
+    function sendAnswer() {
+        const input = document.getElementById("answer");
+        const value = input.value.trim();
+        if (!value || !socket || socket.readyState !== WebSocket.OPEN) return;
+
         socket.send(JSON.stringify({
-            type: "answer",
+            type:       "answer",
             task_index: currentIndex,
-            answer: document.getElementById("answer").value
+            answer:     value,
         }));
 
-        document.getElementById("answer").value = "";
-    };
+        input.value = "";
+    }
+
+    // -----------------------------------------------------------------
+    // Main
+    // -----------------------------------------------------------------
+
+    async function main() {
+        const responseData = await loadRoundState();
+        if (!responseData) return;
+
+        tasks        = responseData.tasks.map(t => t.question);
+        myResults    = responseData.tasks.map(t => t.user_is_correct  ?? null);
+        enemyResults = responseData.tasks.map(t => t.enemy_is_correct ?? null);
+        currentIndex = 0;
+
+        socket = new WebSocket(`ws://${window.location.host}/ws/pvp/${roomId}/?token=${token}`);
+
+        socket.onopen = () => {
+            statusEl.innerText = "Подключено";
+            renderTask();
+            startPolling();
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === "stats") {
+                // Обновляем результаты из статистики
+                const taskIndex = data.current_task - 1; // current_task начинается с 1
+
+                // Запрашиваем актуальное состояние из API
+                loadRoundState().then(apiData => {
+                    if (apiData) {
+                        myResults    = apiData.tasks.map(t => t.user_is_correct  ?? null);
+                        enemyResults = apiData.tasks.map(t => t.enemy_is_correct ?? null);
+
+                        // Переходим на следующую задачу если текущая решена
+                        if (myResults[currentIndex] !== null && currentIndex < tasks.length - 1) {
+                            currentIndex++;
+                        }
+
+                        renderTask();
+                    }
+                });
+
+                myProgressEl.style.width    = data.completion_percentage + "%";
+                enemyProgressEl.style.width = data.enemy_correct_percentage + "%";
+            }
+
+            if (data.type === "finish_round") {
+                showFinish(data);
+            }
+
+            if (data.type === "error") {
+                statusEl.innerText = "Ошибка: " + data.errors;
+            }
+        };
+
+        socket.onclose = () => {
+            statusEl.innerText = "Соединение разорвано";
+        };
+
+        document.getElementById("send").onclick = sendAnswer;
+        document.getElementById("answer").addEventListener("keydown", e => {
+            if (e.key === "Enter") sendAnswer();
+        });
+    }
+
+    main();
 </script>
 
 </body>

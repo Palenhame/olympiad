@@ -1,0 +1,21 @@
+[33mee49249[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdev[m[33m, [m[1;31morigin/dev[m[33m)[m fix: fix api
+[33m2f3c4d1[m feat: finish add redis  search_round and pvp
+[33m9852ae9[m fix: fix search_round and pvp
+[33mbd93e8a[m for laptop
+[33m6f60f97[m feat: finish doing search_enemy
+[33m11e2d4b[m for laptop
+[33ma378961[m feat: start involve redis
+[33m84bffd5[m feat: start add django--ninja
+[33m0638d6c[m Start add redis
+[33m0ef2705[m Feat: Start refactor code and add exceptions and serializer
+[33mec41882[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m feat: Finish pvp and seach_enemy
+[33mf91eebb[m feat: Before school
+[33mc8fbd63[m Delete .idea directory
+[33ma374ea5[m feat: Continue doing search_enemy and pvp
+[33m2628bd3[m feat: Before school
+[33m3a1b84e[m Start doing search_enemy
+[33md2b1bc6[m feat: Before school
+[33m3c53ddd[m feat: Create all models. Finish pvp
+[33md1ee154[m feat: Create PvpConsumer class; create consumers.py, routing.py; change asgi.py, settings.py
+[33m7c96911[m feat: Initial commit
+[33m3152737[m Initial commit

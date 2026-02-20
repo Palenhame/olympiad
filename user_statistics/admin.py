@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from user_statistics.models import Statistics
+from user_statistics.models import RoundStatistics, TrainingStatistics
 
-
-admin.site.register(Statistics)
+admin.site.register(RoundStatistics)
+admin.site.register(TrainingStatistics)

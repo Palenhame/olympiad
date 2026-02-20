@@ -1,0 +1,5 @@
+import urllib.parse
+
+token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzcxNTE4NjYzLCJpYXQiOjE3NzE1MTc3NjMsImp0aSI6IjZiM2I4MjhiMWYwNDQ1YzI5MzUyMGVhMDFkODZjZGRhIiwidXNlcl9pZCI6IjEifQ.lATttncFlN7cQYfkPAErVKT3gn1nxImUxb0-cUsPL_U"
+token_encoded = urllib.parse.quote(token)
+print(token_encoded)

@@ -1,0 +1,362 @@
+openapi: 3.0.3
+info:
+  title: Olympiad
+  version: 1.0.0
+paths:
+  /schema/:
+    get:
+      operationId: api_schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+      parameters:
+        - in: query
+          name: format
+          schema:
+            type: string
+            enum: [json, yaml]
+        - in: query
+          name: lang
+          schema:
+            type: string
+            enum: [af, ar, en, ru, es, fr, de, it, ja, zh-hans] # Сокращено для краткости
+      tags:
+        - api
+      security:
+        - cookieAuth: []
+        - jwtAuth: []
+        - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+
+  /auth/token/:
+    post:
+      operationId: token_create
+      tags:
+        - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+
+  /auth/token/refresh/:
+    post:
+      operationId: api_token_refresh_create
+      tags:
+        - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+
+  /trainings/start_training/:
+    post:
+      operationId: trainings_start_training_create
+      summary: Начать тренировку
+      tags:
+        - trainings
+      security:
+        - cookieAuth: []
+        - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartTrainingResponse'
+          description: ''
+
+  /pvp/{room_id}/task/{task_order}/:
+    get:
+      operationId: get_pvp_task
+      summary: Получить задачу по порядку в раунде
+      tags:
+        - pvp
+      parameters:
+        - in: path
+          name: room_id
+          schema:
+            type: integer
+          required: true
+        - in: path
+          name: task_order
+          schema:
+            type: integer
+          description: Порядковый номер задачи в сессии
+          required: true
+      security:
+        - cookieAuth: []
+        - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PVPTaskResponse'
+          description: ''
+
+  /user/:
+    get:
+      operationId: get_profile
+      tags:
+        - users
+      security:
+        - cookieAuth: []
+        - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+
+  /user/{user_id}/:
+    get:
+      operationId: get_other_profile
+      tags:
+        - users
+      parameters:
+        - in: path
+          name: user_id
+          schema:
+            type: integer
+          required: true
+      security:
+        - cookieAuth: []
+        - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+
+  /tasks/:
+    get:
+      operationId: get_tasks
+      tags:
+        - tasks
+      parameters:
+        - in: query
+          name: subject_id
+          schema:
+            type: integer
+        - in: query
+          name: difficulty
+          schema:
+            enum: [easy, middle, high]
+      security:
+        - cookieAuth: []
+        - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseTaskResponse'
+          description: ''
+
+  /tasks/{global_task_id}/:
+    get:
+      operationId: get_task_info
+      tags:
+        - tasks
+      parameters:
+        - in: path
+          name: global_task_id
+          schema:
+            type: integer
+          required: true
+      security:
+        - cookieAuth: []
+        - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseTask'
+          description: ''
+
+  /tasks/subjects/:
+    get:
+      operationId: get_subjects
+      summary: Предметы (перенесено из points)
+      tags:
+        - tasks
+      security:
+        - cookieAuth: []
+        - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Subject'
+          description: ''
+
+  /user/last_enemies/:
+    get:
+      operationId: get_last_enemies
+      summary: Последние соперники (список словарей)
+      tags:
+        - users
+      parameters:
+        - in: query
+          name: count
+          schema:
+            type: integer
+          required: true
+      security:
+        - cookieAuth: []
+        - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SimpleUserProfile'
+          description: ''
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    StartTrainingResponse:
+      type: object
+      properties:
+        training_id:
+          type: integer
+        message:
+          type: string
+      required: [message, training_id]
+
+    TokenObtainPair:
+      type: object
+      properties:
+        username: { type: string, writeOnly: true }
+        password: { type: string, writeOnly: true }
+        access: { type: string, readOnly: true }
+        refresh: { type: string, readOnly: true }
+      required: [access, password, refresh, username]
+
+    TokenRefresh:
+      type: object
+      properties:
+        access: { type: string, readOnly: true }
+        refresh: { type: string, writeOnly: true }
+      required: [access, refresh]
+
+    BaseTaskResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BaseTask'
+        page: { type: integer }
+        items_count: { type: integer }
+      required: [items, page, items_count]
+
+    BaseTask:
+      type: object
+      properties:
+        task_id: { type: integer }
+        question: { type: string }
+        is_correct: { type: boolean }
+      required: [task_id, question]
+
+    Subject:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        themes:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubjectTheme'
+
+    SubjectTheme:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+
+    PVPTaskResponse:
+      type: object
+      properties:
+        task_order: { type: integer }
+        question: { type: string }
+      required: [task_id, end_time]
+
+    UserProfile:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        stats:
+          $ref: '#/components/schemas/UserStats'
+
+    SimpleUserProfile:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        rate: { type: integer }
+
+    UserStats:
+      type: object
+      properties:
+        rate: { type: integer }
+        trains_count: { type: integer }
+        pvp_count: { type: integer }
+        accuracy_train: { type: number }
+        accuracy_pvp: { type: number }
+        accuracy_total: { type: number }
+        speed_train: { type: number }
+        speed_pvp: { type: number }
+        speed_total: { type: number }
+
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

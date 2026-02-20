@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Тренировка</title>
+
+    <style>
+        body { font-family: sans-serif; }
+        .progress-wrapper { margin-bottom: 15px; }
+        .progress-label { font-size: 14px; margin-bottom: 3px; }
+        .progress-bar { width: 100%; height: 16px; background: #ddd; border-radius: 8px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; transition: width 0.3s; background: #4caf50; }
+
+        .tasks { display: flex; gap: 6px; margin-bottom: 15px; flex-wrap: wrap; }
+        .task-btn { width: 40px; height: 40px; cursor: pointer; border: none; border-radius: 4px; background: #eee; }
+        .my-correct { background: #4caf50; color: white; }
+        .my-wrong   { background: #f44336; color: white; }
+
+        .finish-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .finish-message {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="finish-overlay" id="finishOverlay">
+    <div class="finish-message" id="finishMessage">
+        Тренировка завершена!
+    </div>
+</div>
+
+<h2>Режим тренировки</h2>
+
+<div class="progress-wrapper">
+    <div class="progress-label">Прогресс</div>
+    <div class="progress-bar">
+        <div class="progress-fill" id="myProgress"></div>
+    </div>
+</div>
+
+<hr>
+
+<div class="tasks" id="taskButtons"></div>
+
+<hr>
+
+<div>
+    <strong>Задание:</strong>
+    <div id="task">Ожидание...</div>
+</div>
+
+<hr>
+
+<input type="text" id="answer" placeholder="Введите ответ">
+<button id="send">Отправить</button>
+
+<hr>
+
+<div>
+    <strong>Статус:</strong>
+    <div id="status">Подключение...</div>
+</div>
+
+<script>
+    const trainingId = window.location.pathname.split("/").filter(Boolean).pop();
+
+    async function loadTasks() {
+        const token = localStorage.getItem("access_token");
+        const response = await fetch(`/trainings/${trainingId}/`, {
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            document.getElementById("status").innerText = "Ошибка API: " + response.status;
+            return null;
+        }
+
+        return await response.json();
+    }
+
+    async function main() {
+        const responseData = await loadTasks();
+        if (!responseData) return;
+
+        const tasksData = responseData.tasks;
+
+        const tasks = tasksData.map(t => t.question);
+        let currentIndex = 0;
+
+        let myResults = tasksData.map(t => t.is_correct);
+
+        const socket = new WebSocket(
+            `ws://${window.location.host}/ws/training/${trainingId}/`
+        );
+
+        const taskEl = document.getElementById("task");
+        const statusEl = document.getElementById("status");
+        const buttonsEl = document.getElementById("taskButtons");
+        const myProgressEl = document.getElementById("myProgress");
+        const finishOverlay = document.getElementById("finishOverlay");
+        const finishMessage = document.getElementById("finishMessage");
+
+        function calcProgress(results) {
+            const solved = results.filter(v => v === true || v === false).length;
+            return (solved / tasks.length) * 100;
+        }
+
+        function updateProgress() {
+            myProgressEl.style.width = calcProgress(myResults) + "%";
+        }
+
+        function renderButtons() {
+            buttonsEl.innerHTML = "";
+
+            tasks.forEach((_, i) => {
+                const btn = document.createElement("button");
+                btn.className = "task-btn";
+                btn.innerText = i + 1;
+
+                if (myResults[i] === true) btn.classList.add("my-correct");
+                if (myResults[i] === false) btn.classList.add("my-wrong");
+
+                btn.onclick = () => {
+                    currentIndex = i;
+                    renderTask();
+                };
+
+                buttonsEl.appendChild(btn);
+            });
+
+            updateProgress();
+        }
+
+        function renderTask() {
+            taskEl.innerText = tasks[currentIndex];
+            renderButtons();
+        }
+
+        socket.onopen = () => {
+            statusEl.innerText = "Подключено";
+            renderTask();
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === "result") {
+                myResults[data.task_index] = data.is_correct;
+                statusEl.innerText = data.is_correct ? "Правильно!" : "Неправильно";
+                renderButtons();
+            }
+
+            if (data.type === "finish_round") {
+                statusEl.innerText = "Тренировка завершена";
+                finishMessage.innerText = data.message || "Тренировка завершена!";
+                finishOverlay.style.display = "flex";
+            }
+        };
+
+        document.getElementById("send").onclick = () => {
+            socket.send(JSON.stringify({
+                type: "answer",
+                task_index: currentIndex,
+                answer: document.getElementById("answer").value
+            }));
+
+            document.getElementById("answer").value = "";
+        };
+    }
+
+    main();
+</script>
+
+</body>
+</html>
