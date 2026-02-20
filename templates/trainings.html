@@ -83,7 +83,7 @@
 
     async function loadTasks() {
         const token = localStorage.getItem("access_token");
-        const response = await fetch(`/training/api/${trainingId}/`, {
+        const response = await fetch(`/trainings/${trainingId}/`, {
             headers: {
                 "Authorization": `Bearer ${token}`
             }

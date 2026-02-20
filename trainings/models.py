@@ -52,4 +52,4 @@ class TrainingTask(models.Model):
         ]
 
     def __str__(self):
-        return f'Training {self.round_id} – Task {self.order}'
+        return f'Training {self.training_id} – Task {self.order}'

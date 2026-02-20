@@ -4,14 +4,24 @@ from channels.security.websocket import AllowedHostsOriginValidator
 from django.core.asgi import get_asgi_application
 
 from .routing import applications
-from authentication.middleware import JWTAuthMiddleware
+from authentication.middleware import JWTAuthMiddleware, AllowAllOriginsMiddleware
 
 django_asgi_app = get_asgi_application()
 
+# application = ProtocolTypeRouter(
+#     {
+#         "http": django_asgi_app,
+#         "websocket": AllowedHostsOriginValidator(
+#             JWTAuthMiddleware( # noqa
+#                 applications
+#             )
+#         ),
+#     }
+# )
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
-        "websocket": AllowedHostsOriginValidator(
+        "websocket": AllowAllOriginsMiddleware(
             JWTAuthMiddleware( # noqa
                 applications
             )

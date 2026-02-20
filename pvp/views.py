@@ -14,7 +14,7 @@ from pvp.models import RoundTask, Round, RoundPlayer
 from pvp.serializers import RoundTaskSerializer, RoundStateSerializer
 
 
-@login_required
+
 def pvp(request: HttpRequest, round_id: int) -> HttpResponse:
     return render(request, 'pvp.html')
 

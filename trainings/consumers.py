@@ -7,10 +7,12 @@ from django.utils import timezone
 
 from pvp.exceptions import RoundNotFound
 from tasks.models import Task
-from pvp.models import RoundTask
 from pvp.serializers import ResultMessageSerializer, AnswerMessageSerializer
 from core.services.redis_services import statistics_cache
-from trainings.models import Training
+from trainings.models import Training, TrainingTask
+from trainings.services.trainings_services import TrainingService
+
+training_service = TrainingService()
 
 
 class TrainingConsumer(AsyncWebsocketConsumer):
@@ -101,7 +103,7 @@ class TrainingConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def is_player_in_training(self):
-        return self.training.players_id == self.user.id
+        return self.training.player_id == self.user.id
 
     async def change_task_status(self, task_index, answer) -> bool:
         correct_answer, round_task_id = await self.get_answer_to_task(
@@ -123,13 +125,12 @@ class TrainingConsumer(AsyncWebsocketConsumer):
         return is_correct
 
     @database_sync_to_async
-    def get_answer_to_task(self, task_id, training_id):
-        task = Task.objects.only("correct_answer").get(pk=task_id)
-        round_task = RoundTask.objects.only("id").get(
-            task=task_id,
-            round=training_id
+    def get_answer_to_task(self, task_order, training_id):
+        training_task = TrainingTask.objects.select_related('task').get(
+            order=task_order,
+            training=training_id,
         )
-        return task.correct_answer, round_task.id
+        return training_task.task.correct_answer, training_task.id
 
     async def save_total_time(self) -> None:
         training_obj = await Training.objects.aget(id=self.training_id)
@@ -144,20 +145,12 @@ class TrainingConsumer(AsyncWebsocketConsumer):
         )
 
     async def finish_training(self):
-        await self.update_training_status()
+        await training_service.finish_training(self.training_id, self.user.id)
 
-        await self.send(
-            text_data=json.dumps({
-                'type': 'finish_round',
-                'message': 'Тренировка завершена!'
-            })
-        )
-
-        await statistics_cache.delete_all_about_round(
-            self.training_id,
-            self.user.id,
-            self.user.id
-        )
+        await self.send(text_data=json.dumps({
+            'type': 'finish_round',
+            'message': 'Тренировка завершена!'
+        }))
 
     @database_sync_to_async
     def update_training_status(self):

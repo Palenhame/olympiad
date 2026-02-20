@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
 
-@login_required
+
 def search(request):
     return render(request, 'search.html')
 
